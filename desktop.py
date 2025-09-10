@@ -9,7 +9,6 @@ from PySide6.QtGui import QIcon
 from PySide6.QtCore import QUrl
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
-# Setup logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[logging.FileHandler('desktop.log'), logging.StreamHandler()])
 
@@ -26,11 +25,12 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DataGenie Test")
+        icon_file = "ibilogo.icns" if sys.platform == "darwin" else "ibilogo.ico"
         try:
-            icon_path = resource_path("ibilogo.ico")
+            icon_path = resource_path(icon_file)
             self.setWindowIcon(QIcon(icon_path))
         except FileNotFoundError:
-            logging.warning("Icon file not found, proceeding without icon")
+            logging.warning(f"Icon file {icon_file} not found, proceeding without icon")
         browser = QWebEngineView()
         browser.setUrl(QUrl("http://127.0.0.1:5000"))
         self.setCentralWidget(browser)
@@ -46,7 +46,6 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=start_flask_thread, daemon=True)
     flask_thread.start()
 
-    # Wait for Flask to start
     import requests
     timeout = 30
     start_time = time.time()
