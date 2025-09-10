@@ -34,17 +34,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+        shell: bash  # Use bash for consistency across platforms
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller -F -w --name DataGenieTest \
-          --add-data "app.py${{ matrix.os == 'windows-latest' && ';' || ':' }}." \
-          --add-data "templates${{ matrix.os == 'windows-latest' && ';' || ':' }}templates" \
-          --add-data "static${{ matrix.os == 'windows-latest' && ';' || ':' }}static" \
-          --hidden-import=PySide6.QtWebEngineWidgets \
-          --hidden-import=PySide6.QtWebEngineCore \
-          --hidden-import=flask \
-          --hidden-import=requests desktop.py
+          pyinstaller -F -w --name DataGenieTest --icon=ibilogo.ico --add-data "app.py${{ matrix.os == 'windows-latest' && ';' || ':' }}." --add-data "templates${{ matrix.os == 'windows-latest' && ';' || ':' }}templates" --add-data "static${{ matrix.os == 'windows-latest' && ';' || ':' }}static" --hidden-import=PySide6.QtWebEngineWidgets --hidden-import=PySide6.QtWebEngineCore --hidden-import=flask --hidden-import=requests desktop.py
+        shell: bash  # Use bash to avoid PowerShell issues
 
       - name: Upload executable
         uses: actions/upload-artifact@v4
