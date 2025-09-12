@@ -20,13 +20,29 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
                     handlers=[logging.FileHandler('desktop.log'), logging.StreamHandler()])
 
 def resource_path(relative_path):
+    """
+    Get absolute path to resource, works for dev and PyInstaller builds.
+    Tries:
+    1. Folder where the EXE/script is located
+    2. PyInstaller temp folder (_MEIPASS)
+    """
+    
+    exe_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+    local_path = os.path.join(exe_dir, relative_path)
+    if os.path.exists(local_path):
+        logging.debug(f"Found resource in EXE folder: {local_path}")
+        return local_path
+
+   
     base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
     full_path = os.path.join(base_path, relative_path)
-    logging.debug(f"Accessing resource: {full_path}")
-    if not os.path.exists(full_path):
-        logging.error(f"Resource not found: {full_path}")
-        raise FileNotFoundError(f"Resource not found: {full_path}")
-    return full_path
+    logging.debug(f"Looking for resource in _MEIPASS: {full_path}")
+    if os.path.exists(full_path):
+        return full_path
+
+    logging.error(f"Resource not found in either EXE folder or _MEIPASS: {relative_path}")
+    raise FileNotFoundError(f"Resource not found: {relative_path}")
+
 
 def validate_license():
     try:
