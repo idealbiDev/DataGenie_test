@@ -11,7 +11,7 @@ from PySide6.QtGui import QPainter, QLinearGradient, QColor, QFont
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from cryptography.fernet import Fernet, InvalidToken
 
-ENCRYPTION_KEY = b'your-encryption-key-here'  # Must match website
+ENCRYPTION_KEY = b'H_2mTjFv5nWr7fGJQyGH72wOSuM9FyPQPoPv0rECptQ='  # Must match website
 cipher = Fernet(ENCRYPTION_KEY)
 VERSION = "1.0.0"  # Update as needed
 BUILD_NUMBER = os.environ.get('GITHUB_RUN_NUMBER', 'dev')  # From GitHub Actions
