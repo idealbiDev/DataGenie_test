@@ -1,14 +1,54 @@
+<!-- templates/engineconfig.html -->
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Create Engine DB</title>
+    <title>Database Configuration</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], input[type="password"] { 
+            width: 300px; padding: 8px; 
+        }
+        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; }
+    </style>
 </head>
 <body>
-    <h1>No Engine DB found</h1>
-    <form method="POST" action="{{ url_for('create_engine_db') }}">
-        <label for="username">Enter your name:</label>
-        <input type="text" name="username" id="username" required>
-        <button type="submit">Create Engine DB</button>
+    <h1>Database Configuration Required</h1>
+    <p>Please provide your database connection details:</p>
+    
+    <form action="/create_engine_db" method="post">
+        <div class="form-group">
+            <label for="host">Host:</label>
+            <input type="text" id="host" name="host" required placeholder="e.g., localhost or 192.168.1.100">
+        </div>
+        
+        <div class="form-group">
+            <label for="port">Port:</label>
+            <input type="text" id="port" name="port" value="3306" required placeholder="e.g., 3306">
+        </div>
+        
+        <div class="form-group">
+            <label for="database">Database Name:</label>
+            <input type="text" id="database" name="database" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <button type="submit">Save Configuration</button>
     </form>
+    
+    <p style="margin-top: 20px; color: #666;">
+        Note: If you're using the desktop application, the configuration form 
+        should appear automatically when needed.
+    </p>
 </body>
 </html>

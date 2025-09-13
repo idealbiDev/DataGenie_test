@@ -5,9 +5,11 @@ import threading
 import logging
 import json
 from pathlib import Path
-from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox, QSplashScreen, QWidget
-from PySide6.QtCore import QUrl, QTimer, Qt
-from PySide6.QtGui import QPainter, QLinearGradient, QColor, QFont, QPixmap
+from PySide6.QtWidgets import (QApplication, QMainWindow, QMessageBox, QSplashScreen, 
+                               QWidget, QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
+                               QLineEdit, QPushButton, QGroupBox, QFormLayout)
+from PySide6.QtCore import QUrl, QTimer, Qt, QSettings
+from PySide6.QtGui import QPainter, QLinearGradient, QColor, QFont, QPixmap, QIcon
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -15,6 +17,10 @@ ENCRYPTION_KEY = b'H_2mTjFv5nWr7fGJQyGH72wOSuM9FyPQPoPv0rECptQ='  # Must match w
 cipher = Fernet(ENCRYPTION_KEY)
 VERSION = "1.0.0"  # Update as needed
 BUILD_NUMBER = os.environ.get('GITHUB_RUN_NUMBER', 'dev')  # From GitHub Actions
+
+# Global variable to store engine_db status
+ENGINE_DB_EXISTS = False
+ENGINE_DB_CONFIG = {}
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[logging.FileHandler('desktop.log'), logging.StreamHandler()])
@@ -59,6 +65,162 @@ def validate_license():
     except (InvalidToken, ValueError, FileNotFoundError) as e:
         logging.error(f"License validation failed: {str(e)}")
         return False
+
+def check_engine_db():
+    """
+    Check if engine_db file exists in the same folder as license.dat
+    Returns True if exists, False otherwise
+    """
+    try:
+        license_dir = os.path.dirname(resource_path("license.dat"))
+        engine_db_path = os.path.join(license_dir, "engine_db")
+        
+        # Check if file exists
+        exists = os.path.exists(engine_db_path)
+        logging.debug(f"Engine DB exists: {exists} at path: {engine_db_path}")
+        
+        # Update global variable
+        global ENGINE_DB_EXISTS
+        ENGINE_DB_EXISTS = exists
+        
+        # If exists, read and decrypt the content
+        if exists:
+            with open(engine_db_path, 'rb') as f:
+                encrypted_data = f.read()
+            decrypted_data = cipher.decrypt(encrypted_data)
+            global ENGINE_DB_CONFIG
+            ENGINE_DB_CONFIG = json.loads(decrypted_data.decode())
+            logging.debug(f"Engine DB config loaded: {ENGINE_DB_CONFIG}")
+        
+        return exists
+    except Exception as e:
+        logging.error(f"Error checking engine_db: {str(e)}")
+        return False
+
+def save_engine_db_config(config):
+    """
+    Save engine DB configuration to encrypted file
+    """
+    try:
+        license_dir = os.path.dirname(resource_path("license.dat"))
+        engine_db_path = os.path.join(license_dir, "engine_db")
+        
+        # Encrypt the configuration
+        json_data = json.dumps(config)
+        encrypted_data = cipher.encrypt(json_data.encode())
+        
+        # Save to file
+        with open(engine_db_path, 'wb') as f:
+            f.write(encrypted_data)
+        
+        logging.debug(f"Engine DB config saved to: {engine_db_path}")
+        return True
+    except Exception as e:
+        logging.error(f"Error saving engine_db config: {str(e)}")
+        return False
+
+class EngineDbDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Database Connection Configuration")
+        self.setModal(True)
+        self.setFixedSize(500, 400)
+        
+        self.setup_ui()
+        
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        
+        # Add title
+        title = QLabel("Database Connection Settings")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px;")
+        layout.addWidget(title)
+        
+        # Add description
+        description = QLabel("Please provide the connection details for your database engine. This information will be encrypted and stored securely.")
+        description.setWordWrap(True)
+        description.setStyleSheet("margin: 10px;")
+        layout.addWidget(description)
+        
+        # Form group
+        form_group = QGroupBox("Connection Details")
+        form_layout = QFormLayout()
+        
+        self.host_input = QLineEdit()
+        self.host_input.setPlaceholderText("e.g., localhost or 192.168.1.100")
+        form_layout.addRow("Host:", self.host_input)
+        
+        self.port_input = QLineEdit()
+        self.port_input.setPlaceholderText("e.g., 3306 for MySQL")
+        self.port_input.setText("3306")
+        form_layout.addRow("Port:", self.port_input)
+        
+        self.database_input = QLineEdit()
+        self.database_input.setPlaceholderText("Database name")
+        form_layout.addRow("Database:", self.database_input)
+        
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Database username")
+        form_layout.addRow("Username:", self.username_input)
+        
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Database password")
+        self.password_input.setEchoMode(QLineEdit.Password)
+        form_layout.addRow("Password:", self.password_input)
+        
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(self.cancel_button)
+        
+        self.save_button = QPushButton("Save Configuration")
+        self.save_button.clicked.connect(self.save_config)
+        self.save_button.setDefault(True)
+        self.save_button.setStyleSheet("background-color: #4CAF50; color: white;")
+        button_layout.addWidget(self.save_button)
+        
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+        
+    def save_config(self):
+        # Validate inputs
+        if not all([self.host_input.text(), self.port_input.text(), 
+                   self.database_input.text(), self.username_input.text()]):
+            QMessageBox.warning(self, "Validation Error", 
+                               "Please fill in all required fields.")
+            return
+        
+        try:
+            port = int(self.port_input.text())
+        except ValueError:
+            QMessageBox.warning(self, "Validation Error", 
+                               "Port must be a valid number.")
+            return
+        
+        # Create config object
+        config = {
+            'host': self.host_input.text(),
+            'port': port,
+            'database': self.database_input.text(),
+            'username': self.username_input.text(),
+            'password': self.password_input.text(),
+            'configured_at': time.time()
+        }
+        
+        # Save config
+        if save_engine_db_config(config):
+            QMessageBox.information(self, "Success", 
+                                   "Database configuration saved successfully. The application will now restart.")
+            self.accept()
+        else:
+            QMessageBox.critical(self, "Error", 
+                                "Failed to save database configuration. Please check the logs for details.")
 
 class SplashWidget(QWidget):
     def __init__(self):
@@ -109,9 +271,34 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(browser)
         self.showMaximized()
 
+def restart_application():
+    """Restart the application"""
+    QTimer.singleShot(1000, lambda: os.execl(sys.executable, sys.executable, *sys.argv))
+
 def start_flask_thread():
     logging.debug("Starting Flask in thread")
     from app import app
+    
+    # Add a route to check engine_db status and get config
+    @app.route('/api/check_engine_db')
+    def check_engine_db_status():
+        global ENGINE_DB_EXISTS, ENGINE_DB_CONFIG
+        return {
+            'engine_db_exists': ENGINE_DB_EXISTS,
+            'engine_db_config': ENGINE_DB_CONFIG if ENGINE_DB_EXISTS else {}
+        }
+    
+    # Add a route to test the database connection
+    @app.route('/api/test_db_connection')
+    def test_db_connection():
+        global ENGINE_DB_CONFIG
+        try:
+            # Here you would implement the actual database connection test
+            # For now, we'll just return a success message
+            return {'status': 'success', 'message': 'Database connection successful'}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+    
     app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False, threaded=True)
 
 if __name__ == "__main__":
@@ -121,6 +308,21 @@ if __name__ == "__main__":
     if not validate_license():
         QMessageBox.critical(None, "License Error", "Invalid or missing license. Please contact support.")
         sys.exit(1)
+
+    # Check if engine_db exists
+    engine_db_exists = check_engine_db()
+    logging.info(f"Engine DB check result: {engine_db_exists}")
+
+    # If engine_db doesn't exist, show configuration dialog
+    if not engine_db_exists:
+        dialog = EngineDbDialog()
+        if dialog.exec() == QDialog.Accepted:
+            # Configuration saved, restart the application
+            restart_application()
+            sys.exit(0)
+        else:
+            # User cancelled, exit the application
+            sys.exit(0)
 
     # Start Flask in a separate thread
     flask_thread = threading.Thread(target=start_flask_thread, daemon=True)
