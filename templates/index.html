@@ -8,20 +8,6 @@
     <h1>Welcome to IdealBI-DataGenie</h1>
     <p>This is a cross-platform Flask-PyQt desktop application.</p>
     
-    <h2>License Information</h2>
-    {% if error %}
-        <p style="color: red;">Error: {{ error }}</p>
-    {% else %}
-        <h3>Encrypted License</h3>
-        <pre>{{ encrypted_license }}</pre>
-        
-        <h3>Decrypted License</h3>
-        <table>
-            <tr><th>Company ID</th><td>{{ decrypted_license.company_id }}</td></tr>
-            <tr><th>License Type</th><td>{{ decrypted_license.licence_type }}</td></tr>
-            <tr><th>App ID</th><td>{{ decrypted_license.app_id }}</td></tr>
-            <tr><th>Timestamp</th><td>{{ decrypted_license.timestamp }}</td></tr>
-        </table>
-    {% endif %}
+ 
 </body>
 </html>
