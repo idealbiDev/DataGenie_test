@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox, QSplashScreen, QWidget
 from PySide6.QtCore import QUrl, QTimer, Qt
-from PySide6.QtGui import QPainter, QLinearGradient, QColor, QFont
+from PySide6.QtGui import QPainter, QLinearGradient, QColor, QFont, QPixmap
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -94,6 +94,12 @@ class SplashWidget(QWidget):
         version_text = f"Version {VERSION} (Build {BUILD_NUMBER})"
         painter.drawText(self.width() - painter.fontMetrics().horizontalAdvance(version_text) - 10, self.height() - 10, version_text)
 
+    def to_pixmap(self):
+        """Convert the widget to a QPixmap"""
+        pixmap = QPixmap(self.size())
+        self.render(pixmap)
+        return pixmap
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -136,13 +142,17 @@ if __name__ == "__main__":
         logging.error("Flask server failed to start")
         sys.exit(1)
 
-    # Show splash screen
+    # Create and show splash screen using a pixmap
     splash_widget = SplashWidget()
-    splash = QSplashScreen(splash_widget)
+    splash_pixmap = splash_widget.to_pixmap()
+    splash = QSplashScreen(splash_pixmap, Qt.WindowType.WindowStaysOnTopHint)
     splash.show()
+
+    # Process events to make sure the splash screen is displayed
+    app.processEvents()
 
     # Transition to main window after 3 seconds
     main_window = MainWindow()
-    QTimer.singleShot(3000, lambda: [main_window.show(), splash.close()])
+    QTimer.singleShot(3000, lambda: [main_window.show(), splash.finish(main_window)])
 
     sys.exit(app.exec())
