@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from PySide6.QtWidgets import (QApplication, QMainWindow, QMessageBox, QSplashScreen, 
                                QWidget, QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                               QLineEdit, QPushButton, QGroupBox, QFormLayout)
+                               QLineEdit, QPushButton, QGroupBox, QFormLayout, QComboBox)
 from PySide6.QtCore import QUrl, QTimer, Qt, QSettings
 from PySide6.QtGui import QPainter, QLinearGradient, QColor, QFont, QPixmap, QIcon
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -124,7 +124,7 @@ class EngineDbDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Database Connection Configuration")
         self.setModal(True)
-        self.setFixedSize(500, 400)
+        self.setFixedSize(500, 450)  # Increased height for the new dropdown
         
         self.setup_ui()
         
@@ -146,13 +146,17 @@ class EngineDbDialog(QDialog):
         form_group = QGroupBox("Connection Details")
         form_layout = QFormLayout()
         
+        # Database type dropdown
+        self.db_type_combo = QComboBox()
+        self.db_type_combo.addItems(["MySQL", "MS SQL Server", "Redshift"])
+        form_layout.addRow("Database Type:", self.db_type_combo)
+        
         self.host_input = QLineEdit()
         self.host_input.setPlaceholderText("e.g., localhost or 192.168.1.100")
         form_layout.addRow("Host:", self.host_input)
         
         self.port_input = QLineEdit()
-        self.port_input.setPlaceholderText("e.g., 3306 for MySQL")
-        self.port_input.setText("3306")
+        self.port_input.setPlaceholderText("e.g., 3306 for MySQL, 1433 for MS SQL, 5439 for Redshift")
         form_layout.addRow("Port:", self.port_input)
         
         self.database_input = QLineEdit()
@@ -167,6 +171,9 @@ class EngineDbDialog(QDialog):
         self.password_input.setPlaceholderText("Database password")
         self.password_input.setEchoMode(QLineEdit.Password)
         form_layout.addRow("Password:", self.password_input)
+        
+        # Set default ports based on database type
+        self.db_type_combo.currentTextChanged.connect(self.update_default_port)
         
         form_group.setLayout(form_layout)
         layout.addWidget(form_group)
@@ -188,6 +195,15 @@ class EngineDbDialog(QDialog):
         
         self.setLayout(layout)
         
+    def update_default_port(self, db_type):
+        """Update the port field with default port for selected database type"""
+        default_ports = {
+            "MySQL": "3306",
+            "MS SQL Server": "1433",
+            "Redshift": "5439"
+        }
+        self.port_input.setText(default_ports.get(db_type, ""))
+        
     def save_config(self):
         # Validate inputs
         if not all([self.host_input.text(), self.port_input.text(), 
@@ -205,6 +221,7 @@ class EngineDbDialog(QDialog):
         
         # Create config object
         config = {
+            'db_type': self.db_type_combo.currentText(),
             'host': self.host_input.text(),
             'port': port,
             'database': self.database_input.text(),
@@ -267,7 +284,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("IdealBI-DataGenie")
         browser = QWebEngineView()
-        browser.setUrl(QUrl("http://127.0.0.1:5000"))
+        # Load the main index page directly
+        browser.setUrl(QUrl("http://127.0.0.1:5000/"))
         self.setCentralWidget(browser)
         self.showMaximized()
 
@@ -364,7 +382,7 @@ if __name__ == "__main__":
     
     while time.time() - start_time < timeout:
         try:
-            response = requests.get("http://127.0.0.1:5000", timeout=1)
+            response = requests.get("http://127.0.0.1:5000/health", timeout=1)
             if response.status_code == 200:
                 logging.debug("Flask server is ready")
                 flask_started = True
