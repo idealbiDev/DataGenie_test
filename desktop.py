@@ -5,6 +5,8 @@ import threading
 import logging
 import json
 from pathlib import Path
+
+from flask import jsonify
 from PySide6.QtWidgets import (QApplication, QMainWindow, QMessageBox, QSplashScreen, 
                                QWidget, QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                QLineEdit, QPushButton, QGroupBox, QFormLayout, QComboBox)
@@ -297,28 +299,8 @@ def restart_application():
 def start_flask_thread():
     logging.debug("Starting Flask in thread")
     try:
-        # Import and start Flask app
+        # Import and start Flask app - don't add routes here
         from app import app
-        
-        # Add a route to check engine_db status and get config
-        @app.route('/api/check_engine_db')
-        def check_engine_db_status():
-            global ENGINE_DB_EXISTS, ENGINE_DB_CONFIG
-            return {
-                'engine_db_exists': ENGINE_DB_EXISTS,
-                'engine_db_config': ENGINE_DB_CONFIG if ENGINE_DB_EXISTS else {}
-            }
-        
-        # Add a route to test the database connection
-        @app.route('/api/test_db_connection')
-        def test_db_connection():
-            global ENGINE_DB_CONFIG
-            try:
-                # Here you would implement the actual database connection test
-                # For now, we'll just return a success message
-                return {'status': 'success', 'message': 'Database connection successful'}
-            except Exception as e:
-                return {'status': 'error', 'message': str(e)}
         
         # Start Flask without the reloader to avoid issues
         app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False, threaded=True)
@@ -333,13 +315,9 @@ def start_flask_thread():
             def fallback_index():
                 return "DataGenie is running"
                 
-            @fallback_app.route('/api/check_engine_db')
-            def fallback_check_engine_db():
-                global ENGINE_DB_EXISTS, ENGINE_DB_CONFIG
-                return {
-                    'engine_db_exists': ENGINE_DB_EXISTS,
-                    'engine_db_config': ENGINE_DB_CONFIG if ENGINE_DB_EXISTS else {}
-                }
+            @fallback_app.route('/health')
+            def fallback_health():
+                return jsonify({'status': 'ok', 'message': 'Flask app is running'})
                 
             fallback_app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False, threaded=True)
         except Exception as e2:
