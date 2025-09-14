@@ -323,6 +323,8 @@ def start_flask_thread():
         except Exception as e2:
             logging.error(f"Failed to start fallback Flask: {str(e2)}")
 
+# ... (previous imports and setup code remains the same)
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
@@ -348,13 +350,14 @@ if __name__ == "__main__":
             logging.info("User cancelled configuration, exiting application")
             sys.exit(0)
 
+    # If engine_db exists, continue to start Flask and show main window
     # Start Flask in a separate thread
     flask_thread = threading.Thread(target=start_flask_thread, daemon=True)
     flask_thread.start()
 
-    # Wait for Flask to start with more attempts and shorter interval
+    # Wait for Flask to start
     import requests
-    timeout = 60  # Increased timeout to 60 seconds
+    timeout = 60
     start_time = time.time()
     flask_started = False
     
@@ -366,26 +369,16 @@ if __name__ == "__main__":
                 flask_started = True
                 break
         except (requests.ConnectionError, requests.Timeout):
-            time.sleep(0.5)  # Shorter sleep interval
+            time.sleep(0.5)
         except Exception as e:
             logging.debug(f"Waiting for Flask: {str(e)}")
             time.sleep(0.5)
     
     if not flask_started:
         logging.error("Flask server failed to start within timeout period")
-        # Try one more time with health endpoint
-        try:
-            response = requests.get("http://127.0.0.1:5000/health", timeout=2)
-            if response.status_code == 200:
-                logging.debug("Flask health check passed")
-                flask_started = True
-        except:
-            pass
-        
-        if not flask_started:
-            QMessageBox.critical(None, "Server Error", 
-                                "Failed to start the application server. Please check the logs for details.")
-            sys.exit(1)
+        QMessageBox.critical(None, "Server Error", 
+                            "Failed to start the application server. Please check the logs for details.")
+        sys.exit(1)
 
     # Create and show splash screen using a pixmap
     splash_widget = SplashWidget()

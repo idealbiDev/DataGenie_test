@@ -1,13 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>IdealBI-DataGenie</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>DataGenie - Main Application</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .db-info { background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .db-info h2 { margin-top: 0; }
+        .success { color: green; }
+    </style>
 </head>
 <body>
-    <h1>Welcome to IdealBI-DataGenie</h1>
-    <p>This is a cross-platform Flask-PyQt desktop application.</p>
+    <h1>DataGenie Application</h1>
     
- 
+    {% if db_config %}
+    <div class="db-info">
+        <h2>Database Connection Status: <span class="success">Connected</span></h2>
+        <p><strong>Database Type:</strong> {{ db_config.db_type }}</p>
+        <p><strong>Host:</strong> {{ db_config.host }}</p>
+        <p><strong>Port:</strong> {{ db_config.port }}</p>
+        <p><strong>Database:</strong> {{ db_config.database }}</p>
+        <p><strong>Username:</strong> {{ db_config.username }}</p>
+        <p><strong>Configured At:</strong> {{ db_config.configured_at|datetime }}</p>
+    </div>
+    
+    <div>
+        <h2>Application Features</h2>
+        <ul>
+            <li><a href="#">Data Import</a></li>
+            <li><a href="#">Data Transformation</a></li>
+            <li><a href="#">Reports</a></li>
+            <li><a href="#">Analytics</a></li>
+        </ul>
+    </div>
+    {% else %}
+    <div class="error">
+        <h2>Database Connection Status: Not Configured</h2>
+        <p>Please configure your database connection to use the application.</p>
+        <a href="/">Go to Configuration</a>
+    </div>
+    {% endif %}
 </body>
 </html>

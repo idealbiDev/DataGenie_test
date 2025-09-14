@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from pathlib import Path
 import json
-import requests
+import os
 from cryptography.fernet import Fernet, InvalidToken
 
 # App setup
@@ -19,23 +19,16 @@ db_config = {}
 
 def get_engine_db_config():
     """
-    Get the engine_db configuration from the desktop app API or directly from file.
+    Get the engine_db configuration by reading the encrypted file directly.
     Returns the config dict if successful, None otherwise.
     """
     global db_config
-    try:
-        # First try to get from desktop app API
-        response = requests.get('http://127.0.0.1:5000/api/check_engine_db', timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('engine_db_exists'):
-                db_config = data.get('engine_db_config', {})
-                print("Database configuration loaded from API:", db_config)
-                return db_config
-    except:
-        pass
     
-    # Fallback: try to read the file directly
+    # Check if we already loaded the config
+    if db_config:
+        return db_config
+    
+    # Try to read the engine_db file directly
     try:
         engine_db_path = BASE_DIR / "engine_db"
         if engine_db_path.exists():
@@ -45,10 +38,15 @@ def get_engine_db_config():
             db_config = json.loads(decrypted_data.decode())
             print("Database configuration loaded from file:", db_config)
             return db_config
+        else:
+            print("Engine DB file does not exist")
+            return None
+    except InvalidToken:
+        print("Error: Invalid encryption key or corrupted engine_db file")
+        return None
     except Exception as e:
         print(f"Error reading engine_db file: {e}")
-    
-    return None
+        return None
 
 def test_database_connection(config):
     """
@@ -57,7 +55,6 @@ def test_database_connection(config):
     """
     try:
         # Placeholder for actual database connection test
-        # You can implement different connection tests based on db_type
         db_type = config.get('db_type', 'MySQL')
         print(f"Testing {db_type} connection to {config.get('host')}:{config.get('port')}")
         
@@ -87,25 +84,13 @@ def check_engine_db_status():
     """
     API endpoint for the desktop app to check engine_db status.
     """
-    try:
-        # Try to read the engine_db file directly
-        engine_db_path = BASE_DIR / "engine_db"
-        if engine_db_path.exists():
-            with open(engine_db_path, 'rb') as f:
-                encrypted_data = f.read()
-            decrypted_data = cipher.decrypt(encrypted_data)
-            config = json.loads(decrypted_data.decode())
-            return jsonify({
-                'engine_db_exists': True,
-                'engine_db_config': config
-            })
-        else:
-            return jsonify({
-                'engine_db_exists': False,
-                'engine_db_config': {}
-            })
-    except Exception as e:
-        print(f"Error reading engine_db file: {e}")
+    config = get_engine_db_config()
+    if config:
+        return jsonify({
+            'engine_db_exists': True,
+            'engine_db_config': config
+        })
+    else:
         return jsonify({
             'engine_db_exists': False,
             'engine_db_config': {}
@@ -149,7 +134,8 @@ def create_engine_db():
             'port': int(port) if port else 3306,
             'database': database,
             'username': username,
-            'password': password
+            'password': password,
+            'configured_at': os.path.getmtime(__file__)  # Use current time
         }
         
         # Encrypt and save the configuration
@@ -160,6 +146,10 @@ def create_engine_db():
             f.write(encrypted_data)
         
         print(f"[INFO] engine_db created at: {BASE_DIR / 'engine_db'}")
+        
+        # Update global config
+        global db_config
+        db_config = config
         
         # Redirect back to index, which should now show index.html
         return redirect(url_for('index'))
@@ -174,7 +164,8 @@ def health_check():
     """
     return jsonify({'status': 'ok', 'message': 'Flask app is running'})
 
+# Pre-load the database configuration when the app starts
+get_engine_db_config()
+
 if __name__ == "__main__":
-    # Pre-load the database configuration when the app starts
-    get_engine_db_config()
     app.run(debug=True, host='127.0.0.1', port=5000, use_reloader=False)
