@@ -6,7 +6,6 @@
   <title>IdealBI - DataGenie</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Firefox compatible Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     .db-icon {
@@ -82,7 +81,7 @@
       border-left: 4px solid #60a5fa;
     }
     
-    /* Custom styles for dark mode */
+    /* Dark mode styles */
     .dark {
       background-color: #111827;
       color: #f3f4f6;
@@ -115,12 +114,12 @@
       background-color: #374151;
     }
     
-    /* Smooth transition for theme switching */
+    /* Smooth transitions */
     body, header, aside, .card, button, main {
       transition: background-color 0.3s, color 0.3s, border-color 0.3s;
     }
     
-    /* Toggle switch styling */
+    /* Toggle switch */
     .theme-switch {
       position: relative;
       display: inline-block;
@@ -161,7 +160,7 @@
       transform: translateX(32px);
     }
     
-    /* Flexbox container for the full viewport height content */
+    /* Layout */
     html, body, .dashboard-container {
       height: 100%;
     }
@@ -170,39 +169,30 @@
       flex-direction: column;
       height: 100vh;
     }
-    
-    /* Main content wrapper to take up the remaining height */
     .content-wrapper {
       display: flex;
       flex: 1;
       overflow: hidden;
     }
-
-    /* Sidebar and main content to fill the remaining height */
     .sidebar {
       height: 100%;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
     }
-
     .main-content {
       flex: 1;
       height: 100%;
       overflow-y: auto;
     }
-
-    /* Footer to push to the bottom of the sidebar */
     .sidebar-footer {
       margin-top: auto;
     }
-    
-    /* Expandable content - show by default */
     .expandable-content {
       display: block;
     }
     
-    /* Custom scrollbar for sidebar */
+    /* Scrollbar */
     .sidebar::-webkit-scrollbar {
       width: 6px;
     }
@@ -239,13 +229,80 @@
       color: #ffa500;
     }
     
-    /* Firefox scrollbar styling */
+    /* Firefox scrollbar */
     .sidebar {
       scrollbar-width: thin;
       scrollbar-color: #c5c5c5 #f1f1f1;
     }
     .dark .sidebar {
       scrollbar-color: #6b7280 #374151;
+    }
+    
+    /* Modal styles */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background-color: white;
+      padding: 2rem;
+      border-radius: 0.5rem;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .dark .modal-content {
+      background-color: #1f2937;
+      color: white;
+    }
+    
+    .db-form {
+      display: none;
+    }
+    
+    .db-form.active {
+      display: block;
+    }
+    
+    /* Connection status indicator */
+    .connection-status {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .status-connected {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    
+    .status-disconnected {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+    
+    .dark .status-connected {
+      background-color: #065f46;
+      color: #d1fae5;
+    }
+    
+    .dark .status-disconnected {
+      background-color: #7f1d1d;
+      color: #fee2e2;
     }
   </style>
 </head>
@@ -260,6 +317,12 @@
         </span>
       </div>
       <div class="flex items-center space-x-4 relative">
+        <!-- Database Connection Status Indicator -->
+        <div id="header-db-status" class="connection-status status-disconnected">
+          <i class="fas fa-database mr-2"></i>
+          <span>Disconnected</span>
+        </div>
+        
         <button title="Notifications" class="hover:text-blue-200 transition-colors"><i class="fas fa-bell"></i></button>
         <button title="Messages" class="hover:text-blue-200 transition-colors"><i class="fas fa-envelope"></i></button>
         <button title="Settings" class="hover:text-blue-200 transition-colors"><i class="fas fa-cog"></i></button>
@@ -284,6 +347,103 @@
         </div>
       </div>
     </header>
+
+    <!-- Database Configuration Modal -->
+    <div id="db-config-modal" class="modal-backdrop hidden">
+      <div class="modal-content">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold">Configure Database Connection</h3>
+          <button id="close-modal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Database Type</label>
+          <select id="db-type-select" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="">Select Database Type</option>
+            <option value="mysql">MySQL</option>
+            <option value="mssql">MS SQL Server</option>
+            <option value="redshift">Amazon Redshift</option>
+          </select>
+        </div>
+        
+        <!-- MySQL Form -->
+        <form id="mysql-form" class="db-form">
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Host</label>
+            <input type="text" name="host" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="localhost" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Port</label>
+            <input type="number" name="port" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="3306" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Database Name</label>
+            <input type="text" name="database" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Username</label>
+            <input type="text" name="username" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1">Password</label>
+            <input type="password" name="password" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Configuration</button>
+        </form>
+        
+        <!-- MS SQL Form -->
+        <form id="mssql-form" class="db-form">
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Server</label>
+            <input type="text" name="host" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="localhost" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Port</label>
+            <input type="number" name="port" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="1433" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Database Name</label>
+            <input type="text" name="database" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Username</label>
+            <input type="text" name="username" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1">Password</label>
+            <input type="password" name="password" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Configuration</button>
+        </form>
+        
+        <!-- Redshift Form -->
+        <form id="redshift-form" class="db-form">
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Host</label>
+            <input type="text" name="host" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="your-cluster.region.redshift.amazonaws.com" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Port</label>
+            <input type="number" name="port" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="5439" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Database Name</label>
+            <input type="text" name="database" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">Username</label>
+            <input type="text" name="username" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1">Password</label>
+            <input type="password" name="password" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+          </div>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Configuration</button>
+        </form>
+      </div>
+    </div>
 
     <button class="md:hidden fixed top-[5vh] left-2 z-40 bg-blue-600 text-white p-2 rounded-full shadow-lg transition-all hover:bg-blue-800" id="menu-toggle">
       <i class="fas fa-bars"></i>
@@ -328,7 +488,7 @@
               <span class="arrow-icon rotate-90">&#9658;</span>
             </div>
             <ul class="ml-4 mt-1 space-y-1 expandable-content">
-              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700"><i class="fas fa-plus w-4 mr-2 text-blue-400"></i>Add Connection</a></li>
+              <li><a href="#" id="configure-sidebar-btn" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700"><i class="fas fa-plus w-4 mr-2 text-blue-400"></i>Add Connection</a></li>
             </ul>
           </li>
         </ul>
@@ -351,10 +511,11 @@
               <p><strong>Port:</strong> <span id="db-port"></span></p>
               <p><strong>Database:</strong> <span id="db-name"></span></p>
               <p><strong>Username:</strong> <span id="db-username"></span></p>
+              <p><strong>Password:</strong> <span id="db-password"></span></p>
             </div>
             <div id="no-db-config" class="hidden">
               <p class="text-red-600 mb-4">Database connection is not configured.</p>
-              <a href="#" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Configure Database</a>
+              <button id="configure-db-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Configure Database</button>
             </div>
           </div>
         </div>
@@ -390,6 +551,62 @@
   </div>
 
   <script>
+    // Database configuration functions
+    function showDatabaseForm(dbType) {
+      // Hide all forms first
+      document.querySelectorAll('.db-form').forEach(form => {
+        form.classList.remove('active');
+      });
+      
+      // Show the selected form
+      const formId = `${dbType}-form`;
+      const form = document.getElementById(formId);
+      if (form) {
+        form.classList.add('active');
+      }
+    }
+    
+    function saveDatabaseConfig(dbType, config) {
+      fetch('/api/save_engine_db', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          db_type: dbType,
+          ...config
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Database configuration saved successfully!');
+          hideModal();
+          checkDatabaseConfig(); // Refresh the status
+        } else {
+          alert('Error saving configuration: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error saving configuration:', error);
+        alert('Error saving configuration. Please check the console for details.');
+      });
+    }
+    
+    function showModal() {
+      document.getElementById('db-config-modal').classList.remove('hidden');
+    }
+    
+    function hideModal() {
+      document.getElementById('db-config-modal').classList.add('hidden');
+      // Reset forms
+      document.querySelectorAll('.db-form').forEach(form => {
+        form.classList.remove('active');
+        form.reset();
+      });
+      document.getElementById('db-type-select').value = '';
+    }
+    
     // Check database configuration
     function checkDatabaseConfig() {
       fetch('/api/check_engine_db')
@@ -398,23 +615,33 @@
           const dbStatus = document.getElementById('db-status');
           const dbDetails = document.getElementById('db-details');
           const noDbConfig = document.getElementById('no-db-config');
+          const headerStatus = document.getElementById('header-db-status');
           
           if (data.engine_db_exists && data.engine_db_config) {
             const config = data.engine_db_config;
             dbStatus.textContent = 'Connected';
             dbStatus.className = 'text-green-600';
             
+            // Update header status
+            headerStatus.className = 'connection-status status-connected';
+            headerStatus.innerHTML = '<i class="fas fa-database mr-2"></i><span>Connected</span>';
+            
             document.getElementById('db-type').textContent = config.db_type || 'N/A';
             document.getElementById('db-host').textContent = config.host || 'N/A';
             document.getElementById('db-port').textContent = config.port || 'N/A';
             document.getElementById('db-name').textContent = config.database || 'N/A';
             document.getElementById('db-username').textContent = config.username || 'N/A';
-            
+            document.getElementById('db-password').textContent = config.password || 'N/A';
             dbDetails.classList.remove('hidden');
             noDbConfig.classList.add('hidden');
           } else {
             dbStatus.textContent = 'Not Configured';
             dbStatus.className = 'text-red-600';
+            
+            // Update header status
+            headerStatus.className = 'connection-status status-disconnected';
+            headerStatus.innerHTML = '<i class="fas fa-database mr-2"></i><span>Disconnected</span>';
+            
             dbDetails.classList.add('hidden');
             noDbConfig.classList.remove('hidden');
           }
@@ -425,7 +652,64 @@
         });
     }
 
-    // Sidebar expand toggle
+    // Event listeners
+    document.getElementById('db-type-select').addEventListener('change', function() {
+      showDatabaseForm(this.value);
+    });
+    
+    document.getElementById('configure-db-btn').addEventListener('click', showModal);
+    document.getElementById('configure-sidebar-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      showModal();
+    });
+    
+    document.getElementById('close-modal').addEventListener('click', hideModal);
+    
+    // Close modal when clicking outside
+    document.getElementById('db-config-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        hideModal();
+      }
+    });
+    
+    // Form submissions
+    document.getElementById('mysql-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      saveDatabaseConfig('mysql', {
+        host: formData.get('host'),
+        port: formData.get('port'),
+        database: formData.get('database'),
+        username: formData.get('username'),
+        password: formData.get('password')
+      });
+    });
+    
+    document.getElementById('mssql-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      saveDatabaseConfig('mssql', {
+        host: formData.get('host'),
+        port: formData.get('port'),
+        database: formData.get('database'),
+        username: formData.get('username'),
+        password: formData.get('password')
+      });
+    });
+    
+    document.getElementById('redshift-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      saveDatabaseConfig('redshift', {
+        host: formData.get('host'),
+        port: formData.get('port'),
+        database: formData.get('database'),
+        username: formData.get('username'),
+        password: formData.get('password')
+      });
+    });
+
+    // Sidebar functionality
     document.querySelectorAll('.expandable-toggle').forEach((toggle) => {
       toggle.addEventListener('click', function () {
         const content = this.nextElementSibling;
@@ -437,14 +721,12 @@
       });
     });
 
-    // Mobile sidebar toggle
     const menuToggle = document.getElementById('menu-toggle');
     const sidebar = document.getElementById('sidebar');
     menuToggle.addEventListener('click', () => {
       sidebar.classList.toggle('-translate-x-full');
     });
     
-    // Close sidebar when clicking outside on mobile
     document.addEventListener('click', (e) => {
       if (window.innerWidth < 768 && 
           !sidebar.contains(e.target) && 
@@ -482,7 +764,6 @@
       profileDropdown.classList.toggle('hidden');
     });
 
-    // Close the dropdown when clicking anywhere else on the document
     document.addEventListener('click', (event) => {
       if (!profileDropdown.contains(event.target) && !profileToggle.contains(event.target)) {
         profileDropdown.classList.add('hidden');
