@@ -1,0 +1,30 @@
+<h3 class="text-lg font-bold mb-4">Columns in {{ schema_name }}.{{ table_name }}</h3>
+<table class="min-w-full divide-y divide-gray-200">
+  <thead>
+    <tr>
+      <th class="px-6 py-3 text-left">Column</th>
+      <th class="px-6 py-3 text-left">Type</th>
+      <th class="px-6 py-3 text-left">Nullable</th>
+      <th class="px-6 py-3 text-left">Actions</th>
+    </tr>
+  </thead>
+  <tbody class="divide-y divide-gray-200">
+    {% for col_name, col_def in columns.items() %}
+    <tr>
+      <td class="px-6 py-4">{{ col_name }}</td>
+      <td class="px-6 py-4">{{ col_def.type_snapshot.column_type }}</td>
+      <td class="px-6 py-4">{{ col_def.type_snapshot.nullable }}</td>
+      <td class="px-6 py-4">
+        <button class="text-blue-500 hover:text-blue-700"
+                hx-get="{{ url_for('client.edit_column', schema_name=schema_name, table_name=table_name, column_name=col_name) }}"
+                hx-target="#modal-container">
+          <i class="fas fa-pencil-alt"></i>
+        </button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Modal container (initially empty) -->
+<div id="modal-container"></div>

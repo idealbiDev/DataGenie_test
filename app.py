@@ -1,15 +1,35 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, redirect, url_for, request, session, flash,jsonify
+import pyodbc,pymysql
+from utils_main import getAdvert, getSolution
+from db import get_conn,get_db_connection
+from home.client_routes import client_bp
+#from sttm.sttm_routes import sttm_bp
+#importing blueprint 
+#from data_dictionary import data_dictionary_bp
+#from data_monitor import monitor_bp
+#from harmoniser import harmoniser_bp
+#from relationship import relationship_bp
+#from flask import Flask, render_template, request, redirect, url_for, jsonify
 from pathlib import Path
 import json
 import os
 from cryptography.fernet import Fernet, InvalidToken
+from config import create_connection_string
 
 # App setup
 BASE_DIR = Path(__file__).parent
+
+
 app = Flask(__name__,
             template_folder=BASE_DIR / "templates",
             static_folder=BASE_DIR / "static")
-
+app.secret_key = "124578963"
+#app.register_blueprint(data_dictionary_bp, url_prefix='/dictionary')
+#app.register_blueprint(monitor_bp, url_prefix='/monitor')
+app.register_blueprint(client_bp, url_prefix='/home')
+#app.register_blueprint(sttm_bp, url_prefix='/sttm')
+#app.register_blueprint(harmoniser_bp, url_prefix='/harmoniser')
+#app.register_blueprint(relationship_bp, url_prefix='/relationship')
 # Use the same encryption key as the desktop app
 ENCRYPTION_KEY = b'H_2mTjFv5nWr7fGJQyGH72wOSuM9FyPQPoPv0rECptQ='
 cipher = Fernet(ENCRYPTION_KEY)
@@ -69,7 +89,66 @@ def test_database_connection(config):
         print(f"Database connection test failed: {e}")
         return False
 
-@app.route('/')
+@app.route("/", methods=["GET", "POST"])
+def login():
+    ad_content = getAdvert()  # Assuming this function is defined elsewhere
+    if request.method == "POST":
+        username = request.form["username"].strip()
+        password = request.form["password"].strip()
+
+        conn = get_db_connection()
+        if conn is None:
+            flash("Database connection failed. Please try again later.", "danger")
+            return redirect(url_for("login"))
+
+        try:
+            with conn.cursor() as cursor:
+                query = """
+                    SELECT user_id, username, password_hash, user_email, company_id, company_name, company_type,
+                           billing_contact_email, billing_tier_id, tier_name, max_columns, cost_per_column,
+                           base_price, products_opted
+                    FROM app_users
+                    WHERE username = %s
+                """
+                cursor.execute(query, (username,))
+                user = cursor.fetchone()
+
+                if user and user["password_hash"] == password:
+                    server_conn=0
+                    session["user_id"] = user["user_id"]
+                    session["username"] = user["username"]
+                    session["user_email"] = user["user_email"]
+                    session["company_id"] = user["company_id"]
+                    session["company_name"] = user["company_name"]
+                    session["tier_name"] = user["tier_name"]
+                    session["products_opted"] = user["products_opted"].split(', ') if user["products_opted"] else []
+                    session["company_type"] = user["company_type"]
+                    session["server_conn"] = server_conn
+                    flash(f"Welcome, {user['username']} from {user['company_name']}!", "success")
+                    return redirect(url_for("home.clienthome" if user["company_type"] == "Billing" else "dashboard"))
+                else:
+                    flash("Invalid username or password.", "danger")
+                    return redirect(url_for("login"))
+
+        except pymysql.Error as err:
+            flash(f"Database error: {err}", "danger")
+            return redirect(url_for("login"))
+        finally:
+            conn.close()
+
+    return render_template("login.html", ad_content=ad_content)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    ad_content = getAdvert()
+    return render_template('register.html', ad_content=ad_content)
+    
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+@app.route('/index')
 def index():
     config = get_engine_db_config()
     if config and test_database_connection(config):
@@ -78,6 +157,13 @@ def index():
     else:
         # If no valid config, show configuration page
         return render_template('engineconfig.html')
+
+@app.route('/testdb')
+def testdb():
+   config = get_engine_db_config()
+   con_config= create_connection_string(config)
+   return render_template('testdb.html', db_config=config,con_config=con_config)
+
 
 @app.route('/api/check_engine_db')
 def check_engine_db_status():

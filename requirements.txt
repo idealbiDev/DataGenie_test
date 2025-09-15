@@ -2,3 +2,7 @@ Flask==2.3.2
 PySide6==6.5.0
 requests==2.31.0
 cryptography
+mysql-connector-python
+pyodbc
+psycopg2-binary
+SQLAlchemy

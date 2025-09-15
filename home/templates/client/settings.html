@@ -1,0 +1,11 @@
+{% extends "client/client_home_base.html" %}
+
+{% block title %}Client Settings - Ideal Bi Solutions{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Settings for {{ username }}</h1>
+<p>Company: {{ company_name }} ({{ company_type }})</p>
+<p>Billing Tier: {{ tier_name }}</p>
+<p>Manage your account settings here.</p>
+<a href="{{ url_for('client.clienthome') }}">Back to Client Homepage</p>
+{% endblock %}

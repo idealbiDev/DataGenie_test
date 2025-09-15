@@ -1,0 +1,39 @@
+<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg p-6 w-full max-w-md">
+    <h3 class="text-xl font-bold mb-4">
+      Edit {{ schema_name }}.{{ table_name }}.{{ column_name }}
+    </h3>
+    
+    <form hx-post="{{ url_for('client.edit_column', schema_name=schema_name, table_name=table_name, column_name=column_name) }}"
+          hx-swap="none">
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">Column Type</label>
+        <select name="column_type" class="w-full p-2 border rounded">
+          <option value="INT" {% if column.type_snapshot.column_type == 'INT' %}selected{% endif %}>INT</option>
+          <option value="VARCHAR" {% if column.type_snapshot.column_type == 'VARCHAR' %}selected{% endif %}>VARCHAR</option>
+          <option value="DATE" {% if column.type_snapshot.column_type == 'DATE' %}selected{% endif %}>DATE</option>
+          <option value="FLOAT" {% if column.type_snapshot.column_type == 'FLOAT' %}selected{% endif %}>FLOAT</option>
+          <option value="UUID" {% if column.type_snapshot.column_type == 'UUID' %}selected{% endif %}>UUID</option>
+        </select>
+      </div>
+      
+      <div class="mb-4">
+        <label class="flex items-center">
+          <input type="checkbox" name="nullable" 
+                 class="mr-2" {% if column.type_snapshot.nullable %}checked{% endif %}>
+          <span>Nullable</span>
+        </label>
+      </div>
+      
+      <div class="flex justify-end space-x-4">
+        <button type="button" class="px-4 py-2 bg-gray-300 rounded"
+                @click="document.getElementById('modal-container').innerHTML = ''">
+          Cancel
+        </button>
+        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
+          Save
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

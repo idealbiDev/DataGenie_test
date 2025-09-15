@@ -1,0 +1,243 @@
+{% extends "client/client_home_base.html" %}
+
+{% block content %}
+<div class="main-container flex" style="width: 100%; height: 100vh; font-family: Arial, sans-serif;">
+    <!-- Schema Navigation -->
+    <div class="nav-container w-1/4 border-r border-gray-200 overflow-y-auto bg-gray-50">
+        <div class="nav-header p-4 font-bold border-b border-gray-200">
+            <i class="fas fa-database mr-2"></i> Database Schemas
+        </div>
+        {% for schema in schemas %}
+       <div class="nav-item p-3 cursor-pointer border-b border-gray-200 hover:bg-gray-100 {% if loop.first %}bg-gray-200 font-semibold{% endif %}" 
+             data-target="schema-{{ schema.name }}">
+            < i class="fas fa-database mr-2"></i>
+            <span>{{ schema.name }}</span>
+        </div>
+        {% endfor %}
+        <div class="nav-item p-3 cursor-pointer border-b border-gray-200 hover:bg-gray-100 bg-gray-200 font-semibold" 
+             data-target="schema-new">
+            < i class="fas fa-plus mr-2"></i>
+            <span>Add New Schema </span>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="content-container flex-1 overflow-y-auto bg-white">
+        <!-- Schema Content (Table List) -->
+        {% for schema in schemas %}
+        <div id="schema-{{ schema.name }}" class="content-pane {% if not loop.first %}hidden{% endif %}">
+            <div class="p-6">
+                <h2 class="text-2xl font-bold mb-2">
+                    <i class="fas fa-database"></i> {{ schema.name }} Schema
+                </h2>
+                <p class="text-gray-600 mb-6">Tables with data quality summaries</p>
+                
+                <div class="table-list space-y-3">
+                    {% for table in schema.tables %}
+                    <div class="table-item p-4 border rounded-lg cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                         data-target="table-{{ schema.name }}-{{ table.name }}">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-medium">
+                                    <i class="fas fa-table mr-2"></i>{{ table.name }}
+                                </div>
+                                <div class="quality-summary flex gap-2 mt-2">
+                                    <span class="quality-pill px-2 py-1 rounded-full text-xs font-semibold 
+                                        {% if table.quality.good > 70 %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                        Good: {{ table.quality.good }}%
+                                    </span>
+                                    <span class="quality-pill px-2 py-1 rounded-full text-xs font-semibold 
+                                        {% if table.quality.bad < 15 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                        Bad: {{ table.quality.bad }}%
+                                    </span>
+                                    <span class="quality-pill px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                        Critical: {{ table.quality.critical }}%
+                                    </span>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400"></i>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Table Content (Column List) -->
+        {% for schema in schemas %}
+            {% for table in schema.tables %}
+            <div id="table-{{ schema.name }}-{{ table.name }}" class="content-pane hidden">
+                <div class="p-6">
+                    <div class="breadcrumb flex items-center text-sm text-gray-600 mb-6">
+                        <span class="back-button flex items-center text-blue-600 cursor-pointer mr-2" 
+                              data-back-to="schema-{{ schema.name }}">
+                            <i class="fas fa-arrow-left mr-1"></i> {{ schema.name }}
+                        </span>
+                        <span class="mx-2">/</span>
+                        <span class="font-medium">{{ table.name }}</span>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mb-2">
+                        <i class="fas fa-table"></i> {{ table.name }} Table
+                    </h2>
+                    <p class="text-gray-600 mb-6">Columns with data quality metrics</p>
+                    
+                    <div class="column-list space-y-3">
+                        {% for column in table.columns %}
+                        <div class="column-item p-3 border rounded cursor-pointer hover:bg-gray-50 transition-colors"
+                             data-target="column-{{ schema.name }}-{{ table.name }}-{{ column.name }}">
+                            <div class="font-medium">
+                                {{ column.name }} <span class="text-gray-500 text-sm">({{ column.type }})</span>
+                            </div>
+                            <div class="quality-summary flex gap-2 mt-1">
+                                {% for metric in column.metrics %}
+                                <span class="quality-pill px-2 py-1 rounded-full text-xs font-semibold 
+                                    {% if metric.status == 'good' %}bg-green-100 text-green-800
+                                    {% elif metric.status == 'bad' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ metric.name }}: {{ metric.value }}%
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% endfor %}
+        
+        <!-- Column Report -->
+        {% for schema in schemas %}
+            {% for table in schema.tables %}
+                {% for column in table.columns %}
+                <div id="column-{{ schema.name }}-{{ table.name }}-{{ column.name }}" class="content-pane hidden">
+                    <div class="p-6">
+                        <div class="breadcrumb flex items-center text-sm text-gray-600 mb-6">
+                            <span class="back-button flex items-center text-blue-600 cursor-pointer mr-2" 
+                                  data-back-to="schema-{{ schema.name }}">
+                                <i class="fas fa-arrow-left mr-1"></i> {{ schema.name }}
+                            </span>
+                            <span class="mx-2">/</span>
+                            <span class="back-button text-blue-600 cursor-pointer mr-2" 
+                                  data-back-to="table-{{ schema.name }}-{{ table.name }}">
+                                {{ table.name }}
+                            </span>
+                            <span class="mx-2">/</span>
+                            <span class="font-medium">{{ column.name }}</span>
+                        </div>
+                        
+                        <h2 class="text-2xl font-bold mb-4">
+                            <i class="fas fa-columns"></i> {{ column.name }} Data Quality Report
+                        </h2>
+                        
+                        <div class="report-container bg-gray-50 p-5 rounded-lg border border-gray-200">
+                            <h3 class="text-lg font-semibold mb-3">Summary Metrics</h3>
+                            <div class="space-y-3">
+                                {% for metric in column.metrics %}
+                                <div class="metric-row flex justify-between py-2 border-b border-gray-200">
+                                    <span class="font-medium">{{ metric.name }}:</span>
+                                    <span>
+                                        {{ metric.value }}% 
+                                        <span class="quality-pill px-2 py-1 rounded-full text-xs font-semibold 
+                                            {% if metric.status == 'good' %}bg-green-100 text-green-800
+                                            {% elif metric.status == 'bad' %}bg-yellow-100 text-yellow-800
+                                            {% else %}bg-red-100 text-red-800{% endif %}">
+                                            {{ metric.status|capitalize }}
+                                        </span>
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <h3 class="text-lg font-semibold mt-6 mb-3">Pattern Analysis</h3>
+                            <div class="space-y-3">
+                                {% for pattern in column.patterns %}
+                                <div class="metric-row flex justify-between py-2 border-b border-gray-200">
+                                    <span class="font-medium">{{ pattern.name }}:</span>
+                                    <span>{{ pattern.value }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <h3 class="text-lg font-semibold mt-6 mb-3">Recommendations</h3>
+                            <ul class="list-disc pl-5 space-y-1">
+                                {% for recommendation in column.recommendations %}
+                                <li>{{ recommendation }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Schema navigation
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.addEventListener('click', function() {
+            navItems.forEach(i => i.classList.remove('bg-gray-200', 'font-semibold'));
+            this.classList.add('bg-gray-200', 'font-semibold');
+            
+            document.querySelectorAll('.content-pane').forEach(pane => {
+                pane.classList.add('hidden');
+            });
+            
+            const targetId = this.getAttribute('data-target');
+            document.getElementById(targetId).classList.remove('hidden');
+        });
+    });
+    
+    // Table item clicks
+    const tableItems = document.querySelectorAll('.table-item');
+    tableItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            document.querySelectorAll('.content-pane').forEach(pane => {
+                pane.classList.add('hidden');
+            });
+            document.getElementById(targetId).classList.remove('hidden');
+        });
+    });
+    
+    // Column item clicks
+    const columnItems = document.querySelectorAll('.column-item');
+    columnItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            document.querySelectorAll('.content-pane').forEach(pane => {
+                pane.classList.add('hidden');
+            });
+            document.getElementById(targetId).classList.remove('hidden');
+        });
+    });
+    
+    // Back button functionality
+    const backButtons = document.querySelectorAll('.back-button');
+    backButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-back-to');
+            document.querySelectorAll('.content-pane').forEach(pane => {
+                pane.classList.add('hidden');
+            });
+            document.getElementById(targetId).classList.remove('hidden');
+        });
+    });
+});
+</script>
+
+<style>
+.quality-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+}
+</style>
+{% endblock %}
