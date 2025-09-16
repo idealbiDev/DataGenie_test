@@ -304,6 +304,15 @@
       background-color: #7f1d1d;
       color: #fee2e2;
     }
+
+    /* Loading animation */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -474,8 +483,9 @@
               <span class="arrow-icon rotate-90">&#9658;</span>
             </div>
             <ul class="ml-4 mt-1 space-y-1 expandable-content">
-              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700 dark:border-dark border-b border-gray-200"><i class="fas fa-cube w-4 mr-2 text-blue-400"></i>Service 1</a></li>
-              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700 dark:border-dark border-b border-gray-200"><i class="fas fa-cube w-4 mr-2 text-blue-400"></i>Service 2</a></li>
+              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700 dark:border-dark border-b border-gray-200"><i class="fas fa-cube w-4 mr-2 text-blue-400"></i>Quality Monitor</a></li>
+              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700 dark:border-dark border-b border-gray-200"><i class="fas fa-cube w-4 mr-2 text-blue-400"></i>Dictionary Generator</a></li>
+              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700 dark:border-dark border-b border-gray-200"><i class="fas fa-cube w-4 mr-2 text-blue-400"></i>Schema Harmonizer</a></li>
             </ul>
           </li>
           
@@ -511,11 +521,49 @@
               <p><strong>Port:</strong> <span id="db-port"></span></p>
               <p><strong>Database:</strong> <span id="db-name"></span></p>
               <p><strong>Username:</strong> <span id="db-username"></span></p>
-              <p><strong>Password:</strong> <span id="db-password"></span></p>
             </div>
             <div id="no-db-config" class="hidden">
               <p class="text-red-600 mb-4">Database connection is not configured.</p>
               <button id="configure-db-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Configure Database</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Database Connection Test -->
+        <div class="mt-6 bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+          <h2 class="text-xl font-semibold mb-4">Database Connection Test</h2>
+          
+          <div id="connection-test-result">
+            <div id="test-success" class="hidden">
+              <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 dark:bg-green-900 dark:border-green-700 dark:text-green-200">
+                <p class="font-bold">Connection Test Successful!</p>
+                <pre id="test-result-data" class="mt-2 p-2 bg-gray-100 rounded dark:bg-gray-700 overflow-auto max-h-40"></pre>
+              </div>
+            </div>
+            
+            <div id="test-failure" class="hidden">
+              <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 dark:bg-red-900 dark:border-red-700 dark:text-red-200">
+                <p class="font-bold">Connection Test Failed</p>
+                <p id="test-error-message" class="mt-2"></p>
+              </div>
+            </div>
+            
+            <div id="test-not-configured" class="hidden">
+              <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4 dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-200">
+                <p class="font-bold">Database Not Configured</p>
+                <p class="mt-2">Please configure a database connection to run tests.</p>
+              </div>
+            </div>
+            
+            <button id="test-connection-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              <i class="fas fa-plug mr-2"></i>Test Connection
+            </button>
+            
+            <div id="test-loading" class="hidden mt-4">
+              <div class="flex items-center">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <span class="ml-3">Testing connection...</span>
+              </div>
             </div>
           </div>
         </div>
@@ -549,6 +597,9 @@
       </main>
     </div>
   </div>
+
+  <!-- Hidden element to store connection status from Flask -->
+  <div id="connection-status-data" class="hidden">{{ connection_status|tojson }}</div>
 
   <script>
     // Database configuration functions
@@ -631,7 +682,7 @@
             document.getElementById('db-port').textContent = config.port || 'N/A';
             document.getElementById('db-name').textContent = config.database || 'N/A';
             document.getElementById('db-username').textContent = config.username || 'N/A';
-            document.getElementById('db-password').textContent = config.password || 'N/A';
+            
             dbDetails.classList.remove('hidden');
             noDbConfig.classList.add('hidden');
           } else {
@@ -652,6 +703,57 @@
         });
     }
 
+    // Connection test functionality
+    function testConnection() {
+      const testLoading = document.getElementById('test-loading');
+      const testSuccess = document.getElementById('test-success');
+      const testFailure = document.getElementById('test-failure');
+      const testNotConfigured = document.getElementById('test-not-configured');
+      const testBtn = document.getElementById('test-connection-btn');
+      
+      testLoading.classList.remove('hidden');
+      testSuccess.classList.add('hidden');
+      testFailure.classList.add('hidden');
+      testNotConfigured.classList.add('hidden');
+      testBtn.disabled = true;
+      
+      fetch('/api/test_connection')
+        .then(response => response.json())
+        .then(data => {
+          testLoading.classList.add('hidden');
+          testBtn.disabled = false;
+          
+          if (data.connected) {
+            testSuccess.classList.remove('hidden');
+            document.getElementById('test-result-data').textContent = 
+              JSON.stringify(data.test_result, null, 2);
+          } else {
+            testFailure.classList.remove('hidden');
+            document.getElementById('test-error-message').textContent = data.message;
+          }
+        })
+        .catch(error => {
+          testLoading.classList.add('hidden');
+          testBtn.disabled = false;
+          testFailure.classList.remove('hidden');
+          document.getElementById('test-error-message').textContent = 
+            'Error testing connection: ' + error.message;
+        });
+    }
+
+    // Update the connection status display
+    function updateConnectionStatus() {
+      fetch('/api/check_engine_db')
+        .then(response => response.json())
+        .then(data => {
+          if (data.connection_status.connected) {
+            testConnection(); // Auto-test if connected
+          } else {
+            document.getElementById('test-not-configured').classList.remove('hidden');
+          }
+        });
+    }
+
     // Event listeners
     document.getElementById('db-type-select').addEventListener('change', function() {
       showDatabaseForm(this.value);
@@ -664,6 +766,7 @@
     });
     
     document.getElementById('close-modal').addEventListener('click', hideModal);
+    document.getElementById('test-connection-btn').addEventListener('click', testConnection);
     
     // Close modal when clicking outside
     document.getElementById('db-config-modal').addEventListener('click', function(e) {
@@ -771,7 +874,25 @@
     });
 
     // Check database configuration on page load
-    document.addEventListener('DOMContentLoaded', checkDatabaseConfig);
+    document.addEventListener('DOMContentLoaded', function() {
+      checkDatabaseConfig();
+      
+      // Check if we have a connection and update UI accordingly
+      try {
+        const statusElement = document.getElementById('connection-status-data');
+        if (statusElement && statusElement.textContent) {
+          const status = JSON.parse(statusElement.textContent);
+          if (status.connected) {
+            testConnection(); // Auto-test if connected
+          } else {
+            document.getElementById('test-not-configured').classList.remove('hidden');
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing connection status:', e);
+        document.getElementById('test-not-configured').classList.remove('hidden');
+      }
+    });
   </script>
 </body>
 </html>

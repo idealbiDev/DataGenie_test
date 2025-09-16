@@ -6,3 +6,4 @@ mysql-connector-python
 pyodbc
 psycopg2-binary
 SQLAlchemy
+cohere==4.34 
