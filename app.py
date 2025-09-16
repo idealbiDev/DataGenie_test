@@ -260,7 +260,7 @@ def index():
     license_data = read_license()
     
     return render_template('index.html', 
-                         db_config=engine_config, 
+                         db_config=engine_config, connection_string=connection_string,
                          license_data=license_data,
                          connection_status=connection_status)
 
