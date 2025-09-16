@@ -2,6 +2,9 @@ from flask import Flask, render_template
 from pathlib import Path
 import json
 from cryptography.fernet import Fernet
+import os
+import mysql.connector
+from dotenv import load_dotenv
 
 # --- Basic App Setup ---
 BASE_DIR = Path(__file__).parent
@@ -47,7 +50,19 @@ def read_license():
         print(f"⚠️  Error reading license file: {e}")
     return None
 
-
+def local_db_connection(db_config_local):
+    """Establishes a connection to the local database using the provided config."""
+    try:
+        conn = mysql.connector.connect(**db_config_local)
+        cursor = conn.cursor()
+        cursor.execute("SELECT VERSION()")
+        db_version = cursor.fetchone()
+        version_local = db_version[0]
+       
+        return version_local
+    except Exception as e:
+     
+        return None
 # --- Main Application Route ---
 
 @app.route('/')
@@ -55,6 +70,14 @@ def index():
     """Main page that reads config files and shows index.html."""
     engine_config = read_engine_db()
     license_data = read_license()
+    db_config_local ={
+        'host':  'localhost',
+        'user': 'datagenie',
+        'password': 'P@ss1234',
+        'database': 'datagenie'
+        }
+    localdb = local_db_connection(db_config_local)
+
 
     # Create a simple status object for the template
     status_info = {
@@ -63,7 +86,7 @@ def index():
     }
 
     return render_template('index.html',
-                           db_config=engine_config,
+                           db_config=engine_config,localdb=localdb,
                            license_data=license_data,
                            connection_status=status_info)
 
