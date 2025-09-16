@@ -1,900 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IdealBI - DataGenie</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <style>
-    .db-icon {
-      font-size: 24px;
-      margin-right: 10px;
-      vertical-align: middle;
-    }
-    .db-card {
-      cursor: pointer;
-      transition: all 0.3s;
-      height: 100%;
-    }
-    .db-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    .connection-form .form-group {
-      margin-bottom: 1.5rem;
-    }
-    .step-indicator {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 1rem;
-    }
-    .step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0 0.5rem;
-      font-size: 0.7rem;
-    }
-    .step-number {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background-color: #e9ecef;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 0.25rem;
-      font-weight: bold;
-      font-size: 0.65rem;
-    }
-    .step.active .step-number {
-      background-color: #0d6efd;
-      color: white;
-    }
-    .step.completed .step-number {
-      background-color: #198754;
-      color: white;
-    }
-    .arrow-icon {
-      transition: transform 0.2s ease-in-out;
-    }
-    .arrow-icon.rotate-90 {
-      transform: rotate(90deg);
-    }
-    .sidebar-item {
-      transition: all 0.2s ease;
-    }
-    .sidebar-item:hover {
-      background-color: #f3f4f6;
-    }
-    .dark .sidebar-item:hover {
-      background-color: #374151;
-    }
-    .active {
-      background-color: #e5e7eb;
-      border-left: 4px solid #3b82f6;
-    }
-    .dark .active {
-      background-color: #374151;
-      border-left: 4px solid #60a5fa;
-    }
-    
-    /* Dark mode styles */
-    .dark {
-      background-color: #111827;
-      color: #f3f4f6;
-    }
-    .dark .header-dark {
-      background-color: #1f2937;
-      color: #f9fafb;
-      border-bottom: 1px solid #374151;
-    }
-    .dark .sidebar-dark {
-      background-color: #1f2937;
-      color: #f9fafb;
-      border-right: 1px solid #374151;
-    }
-    .dark .main-dark {
-      background-color: #111827;
-    }
-    .dark .card-dark {
-      background-color: #1f2937;
-      color: #f3f4f6;
-      border: 1px solid #374151;
-    }
-    .dark .text-dark {
-      color: #f3f4f6;
-    }
-    .dark .border-dark {
-      border-color: #374151;
-    }
-    .dark .hover-dark:hover {
-      background-color: #374151;
-    }
-    
-    /* Smooth transitions */
-    body, header, aside, .card, button, main {
-      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
-    }
-    
-    /* Toggle switch */
-    .theme-switch {
-      position: relative;
-      display: inline-block;
-      width: 60px;
-      height: 28px;
-    }
-    .theme-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #1f2937;
-      transition: .4s;
-      border-radius: 34px;
-    }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 20px;
-      width: 20px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-    input:checked + .slider {
-      background-color: #f3f4f6;
-    }
-    input:checked + .slider:before {
-      transform: translateX(32px);
-    }
-    
-    /* Layout */
-    html, body, .dashboard-container {
-      height: 100%;
-    }
-    .dashboard-container {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    .content-wrapper {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-    .sidebar {
-      height: 100%;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-    .main-content {
-      flex: 1;
-      height: 100%;
-      overflow-y: auto;
-    }
-    .sidebar-footer {
-      margin-top: auto;
-    }
-    .expandable-content {
-      display: block;
-    }
-    
-    /* Scrollbar */
-    .sidebar::-webkit-scrollbar {
-      width: 6px;
-    }
-    .sidebar::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 10px;
-    }
-    .sidebar::-webkit-scrollbar-thumb {
-      background: #c5c5c5;
-      border-radius: 10px;
-    }
-    .sidebar::-webkit-scrollbar-thumb:hover {
-      background: #a8a8a8;
-    }
-    .dark .sidebar::-webkit-scrollbar-track {
-      background: #374151;
-    }
-    .dark .sidebar::-webkit-scrollbar-thumb {
-      background: #6b7280;
-    }
-    .dark .sidebar::-webkit-scrollbar-thumb:hover {
-      background: #9ca3af;
-    }
-    
-    /* Brand styling */
-    .brand-text {
-      font-weight: bold;
-      font-size: 1.25rem;
-    }
-    .brand-data {
-      color: #c0c0c0;
-    }
-    .brand-genie {
-      color: #ffa500;
-    }
-    
-    /* Firefox scrollbar */
-    .sidebar {
-      scrollbar-width: thin;
-      scrollbar-color: #c5c5c5 #f1f1f1;
-    }
-    .dark .sidebar {
-      scrollbar-color: #6b7280 #374151;
-    }
-    
-    /* Modal styles */
-    .modal-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    
-    .modal-content {
-      background-color: white;
-      padding: 2rem;
-      border-radius: 0.5rem;
-      width: 90%;
-      max-width: 600px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    
-    .dark .modal-content {
-      background-color: #1f2937;
-      color: white;
-    }
-    
-    .db-form {
-      display: none;
-    }
-    
-    .db-form.active {
-      display: block;
-    }
-    
-    /* Connection status indicator */
-    .connection-status {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.25rem 0.75rem;
-      border-radius: 1rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-    
-    .status-connected {
-      background-color: #d1fae5;
-      color: #065f46;
-    }
-    
-    .status-disconnected {
-      background-color: #fee2e2;
-      color: #b91c1c;
-    }
-    
-    .dark .status-connected {
-      background-color: #065f46;
-      color: #d1fae5;
-    }
-    
-    .dark .status-disconnected {
-      background-color: #7f1d1d;
-      color: #fee2e2;
-    }
-
-    /* Loading animation */
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .animate-spin {
-      animation: spin 1s linear infinite;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Status</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 700px;
+            width: 100%;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .card h2 {
+            margin-top: 0;
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .config-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .config-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .config-table td:first-child {
+            font-weight: bold;
+            color: #555;
+            width: 30%;
+        }
+        .placeholder {
+            color: #888;
+            font-style: italic;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans">
-  <div class="dashboard-container">
-    <header class="header-dark h-[5vh] bg-blue-700 text-white flex items-center justify-between px-4 z-50 shadow-md">
-      <div class="flex items-center space-x-2">
-        <img src="https://via.placeholder.com/24" class="h-6 w-6" alt="Logo" />
-        <span class="brand-text">
-          <span class="brand-data">Data</span>
-          <span class="brand-genie">Genie</span>
-        </span>
-      </div>
-      <div class="flex items-center space-x-4 relative">
-        <!-- Database Connection Status Indicator -->
-        <div id="header-db-status" class="connection-status status-disconnected">
-          <i class="fas fa-database mr-2"></i>
-          <span>Disconnected</span>
-        </div>
-        
-        <button title="Notifications" class="hover:text-blue-200 transition-colors"><i class="fas fa-bell"></i></button>
-        <button title="Messages" class="hover:text-blue-200 transition-colors"><i class="fas fa-envelope"></i></button>
-        <button title="Settings" class="hover:text-blue-200 transition-colors"><i class="fas fa-cog"></i></button>
-        <button id="profile-toggle" title="User Profile" class="hover:text-blue-200 transition-colors"><i class="fas fa-user-circle"></i></button>
-       
-        <a href="#" class="logout-button" title="Log Out">
-          <i class="fas fa-sign-out-alt"></i>
-        </a>
-        
-        <div id="profile-dropdown" class="absolute hidden right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl dark:bg-gray-800 dark:border-gray-700 z-50">
-          <div class="p-4 border-b dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">User Name</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">user@example.com</p>
-          </div>
-          <div class="p-4 flex items-center justify-between">
-            <span class="text-gray-700 dark:text-gray-300">Dark Mode</span>
-            <label class="theme-switch">
-              <input type="checkbox" id="theme-toggle">
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </header>
+<body>
+    <div class="container">
+        <h1>Application Status 🚀</h1>
 
-    <!-- Database Configuration Modal -->
-    <div id="db-config-modal" class="modal-backdrop hidden">
-      <div class="modal-content">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-xl font-semibold">Configure Database Connection</h3>
-          <button id="close-modal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-            <i class="fas fa-times"></i>
-          </button>
+        <div class="card">
+            <h2>System Status</h2>
+            {% if connection_status.connected %}
+                <div class="status success">
+                    {{ connection_status.message }}
+                </div>
+            {% else %}
+                 <div class="status error">
+                    {{ connection_status.message }}
+                </div>
+            {% endif %}
         </div>
-        
-        <div class="mb-4">
-          <label class="block text-sm font-medium mb-2">Database Type</label>
-          <select id="db-type-select" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-            <option value="">Select Database Type</option>
-            <option value="mysql">MySQL</option>
-            <option value="mssql">MS SQL Server</option>
-            <option value="redshift">Amazon Redshift</option>
-          </select>
+
+        <div class="card">
+            <h2>Database Configuration</h2>
+            {# This Jinja2 'if' block checks if db_config exists #}
+            {% if db_config %}
+                <table class="config-table">
+                    {# We loop through the dictionary to display each item #}
+                    {% for key, value in db_config.items() %}
+                    <tr>
+                        <td>{{ key.replace('_', ' ').title() }}</td>
+                        <td>
+                            {# IMPORTANT: Hide the password for security #}
+                            {% if key == 'password' %}
+                                ********
+                            {% else %}
+                                {{ value }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p class="placeholder">No database configuration found in `engine_db`.</p>
+            {% endif %}
         </div>
-        
-        <!-- MySQL Form -->
-        <form id="mysql-form" class="db-form">
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Host</label>
-            <input type="text" name="host" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="localhost" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Port</label>
-            <input type="number" name="port" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="3306" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Database Name</label>
-            <input type="text" name="database" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Username</label>
-            <input type="text" name="username" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Password</label>
-            <input type="password" name="password" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Configuration</button>
-        </form>
-        
-        <!-- MS SQL Form -->
-        <form id="mssql-form" class="db-form">
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Server</label>
-            <input type="text" name="host" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="localhost" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Port</label>
-            <input type="number" name="port" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="1433" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Database Name</label>
-            <input type="text" name="database" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Username</label>
-            <input type="text" name="username" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Password</label>
-            <input type="password" name="password" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Configuration</button>
-        </form>
-        
-        <!-- Redshift Form -->
-        <form id="redshift-form" class="db-form">
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Host</label>
-            <input type="text" name="host" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="your-cluster.region.redshift.amazonaws.com" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Port</label>
-            <input type="number" name="port" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="5439" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Database Name</label>
-            <input type="text" name="database" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <div class="mb-3">
-            <label class="block text-sm font-medium mb-1">Username</label>
-            <input type="text" name="username" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Password</label>
-            <input type="password" name="password" class="w-full p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-          </div>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Configuration</button>
-        </form>
-      </div>
+
+        <div class="card">
+            <h2>License Information</h2>
+             {# This checks if the license_data dictionary was loaded #}
+            {% if license_data %}
+                <table class="config-table">
+                    {% for key, value in license_data.items() %}
+                    <tr>
+                        <td>{{ key.replace('_', ' ').title() }}</td>
+                        <td>{{ value }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p class="placeholder">No license data found in `license.dat`.</p>
+            {% endif %}
+        </div>
     </div>
-
-    <button class="md:hidden fixed top-[5vh] left-2 z-40 bg-blue-600 text-white p-2 rounded-full shadow-lg transition-all hover:bg-blue-800" id="menu-toggle">
-      <i class="fas fa-bars"></i>
-    </button>
-
-    <div class="content-wrapper">
-      <aside id="sidebar" class="sidebar sidebar-dark bg-white w-64 p-4 shadow-md transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-40 md:sticky md:top-0">
-        <h2 class="text-xl font-semibold mb-4 pl-2 dark:text-white">Company Name</h2>
-        <h4 class="text-sm font-semibold text-black">
-          Server: 
-          <span class="text-blue-600 font-bold">localhost</span>
-        </h4>
-		
-        <ul class="space-y-1">
-          <li>
-            <a href="#" class="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded sidebar-item dark:text-gray-300 dark:hover:bg-gray-700">
-              <i class="fas fa-tachometer-alt w-5 mr-3 text-blue-500"></i>
-              <span>Dashboard</span>
-            </a>
-          </li>
-          
-          <li>
-            <div class="flex justify-between items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer rounded expandable-toggle sidebar-item dark:text-gray-300 dark:hover:bg-gray-700">
-              <div class="flex items-center">
-                <i class="fas fa-cogs w-5 mr-3 text-blue-500"></i>
-                <span class="font-bold uppercase">SERVICES</span>
-              </div>
-              <span class="arrow-icon rotate-90">&#9658;</span>
-            </div>
-            <ul class="ml-4 mt-1 space-y-1 expandable-content">
-              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700 dark:border-dark border-b border-gray-200"><i class="fas fa-cube w-4 mr-2 text-blue-400"></i>Quality Monitor</a></li>
-              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700 dark:border-dark border-b border-gray-200"><i class="fas fa-cube w-4 mr-2 text-blue-400"></i>Dictionary Generator</a></li>
-              <li><a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700 dark:border-dark border-b border-gray-200"><i class="fas fa-cube w-4 mr-2 text-blue-400"></i>Schema Harmonizer</a></li>
-            </ul>
-          </li>
-          
-          <li>
-            <div class="flex justify-between items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer rounded expandable-toggle sidebar-item dark:text-gray-300 dark:hover:bg-gray-700">
-              <div class="flex items-center">
-                <i class="fas fa-plug w-5 mr-3 text-blue-500"></i>
-                <span class="font-bold uppercase">CONNECTIONS</span>
-              </div>
-              <span class="arrow-icon rotate-90">&#9658;</span>
-            </div>
-            <ul class="ml-4 mt-1 space-y-1 expandable-content">
-              <li><a href="#" id="configure-sidebar-btn" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded dark:text-gray-400 dark:hover:bg-gray-700"><i class="fas fa-plus w-4 mr-2 text-blue-400"></i>Add Connection</a></li>
-            </ul>
-          </li>
-        </ul>
-      </aside>
-
-      <main class="main-content main-dark pl-2 pr-6 py-6 bg-gray-50 dark:bg-gray-900">
-        <div class="flex items-center gap-4">
-          <i class="fas fa-database text-blue-600 text-3xl"></i>
-          <h1 class="text-2xl font-bold">Main Application</h1>
-        </div>
-        <hr class="border-t border-gray-300 mb-6 dark:border-gray-700">
-        
-        <!-- Database Connection Status -->
-        <div id="db-status-container">
-          <div class="db-info bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
-            <h2 class="text-xl font-semibold mb-4">Database Connection Status: <span id="db-status" class="text-red-600">Checking...</span></h2>
-            <div id="db-details" class="hidden">
-              <p><strong>Database Type:</strong> <span id="db-type"></span></p>
-              <p><strong>Host:</strong> <span id="db-host"></span></p>
-              <p><strong>Port:</strong> <span id="db-port"></span></p>
-              <p><strong>Database:</strong> <span id="db-name"></span></p>
-              <p><strong>Username:</strong> <span id="db-username"></span></p>
-              <p><strong>Password:</strong> <span>************</span></p>
-            </div>
-            <div id="no-db-config" class="hidden">
-              <p class="text-red-600 mb-4">Database connection is not configured.</p>
-              <p>{{connection_string}}</p>
-              <button id="configure-db-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Configure Database</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Database Connection Test -->
-        <div class="mt-6 bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
-          <h2 class="text-xl font-semibold mb-4">Database Connection Test</h2>
-          
-          <div id="connection-test-result">
-            <div id="test-success" class="hidden">
-              <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 dark:bg-green-900 dark:border-green-700 dark:text-green-200">
-                <p class="font-bold">Connection Test Successful!</p>
-                <pre id="test-result-data" class="mt-2 p-2 bg-gray-100 rounded dark:bg-gray-700 overflow-auto max-h-40"></pre>
-              </div>
-            </div>
-            
-            <div id="test-failure" class="hidden">
-              <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 dark:bg-red-900 dark:border-red-700 dark:text-red-200">
-                <p class="font-bold">Connection Test Failed</p>
-                <p id="test-error-message" class="mt-2"></p>
-              </div>
-            </div>
-            
-            <div id="test-not-configured" class="hidden">
-              <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4 dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-200">
-                <p class="font-bold">Database Not Configured</p>
-                <p class="mt-2">Please configure a database connection to run tests.</p>
-              </div>
-            </div>
-            
-            <button id="test-connection-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-              <i class="fas fa-plug mr-2"></i>Test Connection
-            </button>
-            
-            <div id="test-loading" class="hidden mt-4">
-              <div class="flex items-center">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                <span class="ml-3">Testing connection...</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Application Features -->
-        <div class="mt-8">
-          <h2 class="text-xl font-semibold mb-4">Application Features</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white p-4 rounded-lg shadow-md text-center dark:bg-gray-800">
-              <i class="fas fa-file-import text-blue-500 text-3xl mb-3"></i>
-              <h3 class="font-semibold">Data Import</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">Import data from various sources</p>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-md text-center dark:bg-gray-800">
-              <i class="fas fa-cogs text-green-500 text-3xl mb-3"></i>
-              <h3 class="font-semibold">Data Transformation</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">Transform and clean your data</p>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-md text-center dark:bg-gray-800">
-              <i class="fas fa-chart-bar text-purple-500 text-3xl mb-3"></i>
-              <h3 class="font-semibold">Reports</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">Generate detailed reports</p>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow-md text-center dark:bg-gray-800">
-              <i class="fas fa-analytics text-orange-500 text-3xl mb-3"></i>
-              <h3 class="font-semibold">Analytics</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">Advanced data analytics</p>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  </div>
-
-  <!-- Hidden element to store connection status from Flask -->
-  <div id="connection-status-data" class="hidden">{{ connection_status|tojson }}</div>
-
-  <script>
-    // Database configuration functions
-    function showDatabaseForm(dbType) {
-      // Hide all forms first
-      document.querySelectorAll('.db-form').forEach(form => {
-        form.classList.remove('active');
-      });
-      
-      // Show the selected form
-      const formId = `${dbType}-form`;
-      const form = document.getElementById(formId);
-      if (form) {
-        form.classList.add('active');
-      }
-    }
-    
-    function saveDatabaseConfig(dbType, config) {
-      fetch('/api/save_engine_db', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          db_type: dbType,
-          ...config
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          alert('Database configuration saved successfully!');
-          hideModal();
-          checkDatabaseConfig(); // Refresh the status
-        } else {
-          alert('Error saving configuration: ' + data.message);
-        }
-      })
-      .catch(error => {
-        console.error('Error saving configuration:', error);
-        alert('Error saving configuration. Please check the console for details.');
-      });
-    }
-    
-    function showModal() {
-      document.getElementById('db-config-modal').classList.remove('hidden');
-    }
-    
-    function hideModal() {
-      document.getElementById('db-config-modal').classList.add('hidden');
-      // Reset forms
-      document.querySelectorAll('.db-form').forEach(form => {
-        form.classList.remove('active');
-        form.reset();
-      });
-      document.getElementById('db-type-select').value = '';
-    }
-    
-    // Check database configuration
-    function checkDatabaseConfig() {
-      fetch('/api/check_engine_db')
-        .then(response => response.json())
-        .then(data => {
-          const dbStatus = document.getElementById('db-status');
-          const dbDetails = document.getElementById('db-details');
-          const noDbConfig = document.getElementById('no-db-config');
-          const headerStatus = document.getElementById('header-db-status');
-          
-          if (data.engine_db_exists && data.engine_db_config) {
-            const config = data.engine_db_config;
-            dbStatus.textContent = 'Connected';
-            dbStatus.className = 'text-green-600';
-            
-            // Update header status
-            headerStatus.className = 'connection-status status-connected';
-            headerStatus.innerHTML = '<i class="fas fa-database mr-2"></i><span>Connected</span>';
-            
-            document.getElementById('db-type').textContent = config.db_type || 'N/A';
-            document.getElementById('db-host').textContent = config.host || 'N/A';
-            document.getElementById('db-port').textContent = config.port || 'N/A';
-            document.getElementById('db-name').textContent = config.database || 'N/A';
-            document.getElementById('db-username').textContent = config.username || 'N/A';
-            
-            dbDetails.classList.remove('hidden');
-            noDbConfig.classList.add('hidden');
-          } else {
-            dbStatus.textContent = 'Not Configured';
-            dbStatus.className = 'text-red-600';
-            
-            // Update header status
-            headerStatus.className = 'connection-status status-disconnected';
-            headerStatus.innerHTML = '<i class="fas fa-database mr-2"></i><span>Disconnected</span>';
-            
-            dbDetails.classList.add('hidden');
-            noDbConfig.classList.remove('hidden');
-          }
-        })
-        .catch(error => {
-          console.error('Error checking database config:', error);
-          document.getElementById('db-status').textContent = 'Error';
-        });
-    }
-
-    // Connection test functionality
-    function testConnection() {
-      const testLoading = document.getElementById('test-loading');
-      const testSuccess = document.getElementById('test-success');
-      const testFailure = document.getElementById('test-failure');
-      const testNotConfigured = document.getElementById('test-not-configured');
-      const testBtn = document.getElementById('test-connection-btn');
-      
-      testLoading.classList.remove('hidden');
-      testSuccess.classList.add('hidden');
-      testFailure.classList.add('hidden');
-      testNotConfigured.classList.add('hidden');
-      testBtn.disabled = true;
-      
-      fetch('/api/test_connection')
-        .then(response => response.json())
-        .then(data => {
-          testLoading.classList.add('hidden');
-          testBtn.disabled = false;
-          
-          if (data.connected) {
-            testSuccess.classList.remove('hidden');
-            document.getElementById('test-result-data').textContent = 
-              JSON.stringify(data.test_result, null, 2);
-          } else {
-            testFailure.classList.remove('hidden');
-            document.getElementById('test-error-message').textContent = data.message;
-          }
-        })
-        .catch(error => {
-          testLoading.classList.add('hidden');
-          testBtn.disabled = false;
-          testFailure.classList.remove('hidden');
-          document.getElementById('test-error-message').textContent = 
-            'Error testing connection: ' + error.message;
-        });
-    }
-
-    // Update the connection status display
-    function updateConnectionStatus() {
-      fetch('/api/check_engine_db')
-        .then(response => response.json())
-        .then(data => {
-          if (data.connection_status.connected) {
-            testConnection(); // Auto-test if connected
-          } else {
-            document.getElementById('test-not-configured').classList.remove('hidden');
-          }
-        });
-    }
-
-    // Event listeners
-    document.getElementById('db-type-select').addEventListener('change', function() {
-      showDatabaseForm(this.value);
-    });
-    
-    document.getElementById('configure-db-btn').addEventListener('click', showModal);
-    document.getElementById('configure-sidebar-btn').addEventListener('click', function(e) {
-      e.preventDefault();
-      showModal();
-    });
-    
-    document.getElementById('close-modal').addEventListener('click', hideModal);
-    document.getElementById('test-connection-btn').addEventListener('click', testConnection);
-    
-    // Close modal when clicking outside
-    document.getElementById('db-config-modal').addEventListener('click', function(e) {
-      if (e.target === this) {
-        hideModal();
-      }
-    });
-    
-    // Form submissions
-    document.getElementById('mysql-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const formData = new FormData(this);
-      saveDatabaseConfig('mysql', {
-        host: formData.get('host'),
-        port: formData.get('port'),
-        database: formData.get('database'),
-        username: formData.get('username'),
-        password: formData.get('password')
-      });
-    });
-    
-    document.getElementById('mssql-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const formData = new FormData(this);
-      saveDatabaseConfig('mssql', {
-        host: formData.get('host'),
-        port: formData.get('port'),
-        database: formData.get('database'),
-        username: formData.get('username'),
-        password: formData.get('password')
-      });
-    });
-    
-    document.getElementById('redshift-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const formData = new FormData(this);
-      saveDatabaseConfig('redshift', {
-        host: formData.get('host'),
-        port: formData.get('port'),
-        database: formData.get('database'),
-        username: formData.get('username'),
-        password: formData.get('password')
-      });
-    });
-
-    // Sidebar functionality
-    document.querySelectorAll('.expandable-toggle').forEach((toggle) => {
-      toggle.addEventListener('click', function () {
-        const content = this.nextElementSibling;
-        const arrow = this.querySelector('.arrow-icon');
-        if (content) {
-          content.classList.toggle('hidden');
-          arrow.classList.toggle('rotate-90');
-        }
-      });
-    });
-
-    const menuToggle = document.getElementById('menu-toggle');
-    const sidebar = document.getElementById('sidebar');
-    menuToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('-translate-x-full');
-    });
-    
-    document.addEventListener('click', (e) => {
-      if (window.innerWidth < 768 && 
-          !sidebar.contains(e.target) && 
-          e.target !== menuToggle && 
-          !menuToggle.contains(e.target)) {
-        sidebar.classList.add('-translate-x-full');
-      }
-    });
-
-    // Theme toggle functionality
-    const themeToggle = document.getElementById('theme-toggle');
-    
-    if (localStorage.getItem('theme') === 'dark' || 
-        (window.matchMedia('(prefers-color-scheme: dark)').matches && !localStorage.getItem('theme'))) {
-      document.documentElement.classList.add('dark');
-      themeToggle.checked = true;
-    }
-    
-    themeToggle.addEventListener('change', () => {
-      if (themeToggle.checked) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      }
-    });
-
-    // Profile Dropdown Toggle
-    const profileToggle = document.getElementById('profile-toggle');
-    const profileDropdown = document.getElementById('profile-dropdown');
-
-    profileToggle.addEventListener('click', (event) => {
-      event.stopPropagation();
-      profileDropdown.classList.toggle('hidden');
-    });
-
-    document.addEventListener('click', (event) => {
-      if (!profileDropdown.contains(event.target) && !profileToggle.contains(event.target)) {
-        profileDropdown.classList.add('hidden');
-      }
-    });
-
-    // Check database configuration on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      checkDatabaseConfig();
-      
-      // Check if we have a connection and update UI accordingly
-      try {
-        const statusElement = document.getElementById('connection-status-data');
-        if (statusElement && statusElement.textContent) {
-          const status = JSON.parse(statusElement.textContent);
-          if (status.connected) {
-            testConnection(); // Auto-test if connected
-          } else {
-            document.getElementById('test-not-configured').classList.remove('hidden');
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing connection status:', e);
-        document.getElementById('test-not-configured').classList.remove('hidden');
-      }
-    });
-  </script>
 </body>
 </html>
