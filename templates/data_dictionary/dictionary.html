@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Dictionary</title>
+    <style>
+        .tables { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .table-card { border: 1px solid #ddd; padding: 1rem; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Database Data Dictionary</h1>
+    
+    <div class="tables">
+        {% for table in tables %}
+            <div class="table-card">
+                <h3>{{ table }}</h3>
+                <a href="/dictionary/{{ table }}">View Details</a>
+                <a href="/dictionary/{{ table }}/export">Export CSV</a>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <p><a href="/">Back to Query Interface</a></p>
+</body>
+</html>

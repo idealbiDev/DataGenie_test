@@ -1,0 +1,46 @@
+{% extends "client_home_base.html" %}
+
+{% block title %}Dashboard - Data Quality Monitor{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="fas fa-tachometer-alt me-2"></i>Dashboard:{{session["server_type"]}}</h1>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('data_dictionary.dbselect') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> New Connection
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-plug me-2"></i>Active Connections</h5>
+                <p class="card-text">View and manage your database connections</p>
+                <a href="#" class="btn btn-outline-primary">Manage</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-table me-2"></i>Data Quality Rules</h5>
+                <p class="card-text">Configure and manage your data quality rules</p>
+                <a href="#" class="btn btn-outline-primary">Configure</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-chart-bar me-2"></i>Reports</h5>
+                <p class="card-text">View data quality reports and metrics</p>
+                <a href="#" class="btn btn-outline-primary">View Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

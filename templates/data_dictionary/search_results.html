@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Results</title>
+</head>
+<body>
+    <h1>Search Results for "{{ search_term }}"</h1>
+    
+    {% if tables %}
+        <ul>
+            {% for table in tables %}
+                <li>
+                    <a href="/dictionary/{{ db_type }}/{{ table }}">{{ table }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No tables/columns found matching your search.</p>
+    {% endif %}
+    
+    <p><a href="/dictionary">Back to Dictionary</a></p>
+</body>
+</html>

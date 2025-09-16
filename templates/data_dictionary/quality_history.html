@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quality History: {{ table_name }}</title>
+    <!-- Similar styling as quality_report.html -->
+</head>
+<body>
+    <h1>Quality History: {{ table_name }}</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Report Date</th>
+                <th>Column</th>
+                <th>Completeness</th>
+                <th>Validity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in history %}
+                <tr>
+                    <td>{{ row.ReportDate }}</td>
+                    <td>{{ row.ColumnName }}</td>
+                    <td>{{ row.DataCompleteness }}</td>
+                    <td>{{ row.DataValidityConsistency }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <p><a href="/quality/{{ db_type }}/{{ table_name }}">Run New Check</a></p>
+</body>
+</html>

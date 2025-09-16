@@ -14,9 +14,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 data_dictionary_bp = Blueprint(
     'data_dictionary',
-    __name__,
-    template_folder='templates',
-    static_folder='static'
+    __name__
+    #,template_folder='templates',
+   # static_folder='static'
 )
 
 @data_dictionary_bp.context_processor

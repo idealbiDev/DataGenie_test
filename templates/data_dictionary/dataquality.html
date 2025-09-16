@@ -1,0 +1,126 @@
+{% extends "data_quality_monitor/base.html" %}
+
+{% block title %}Data Quality Config{% endblock %}
+
+{% block content %}
+<style>
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 10px; /* Table body font size */
+    }
+    
+    .data-table th, .data-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .data-table th {
+      background-color: #c0c0c0; /* Silver gray */
+      font-size: 10px; /* Header font size */
+    }
+    .data-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+   
+  
+  .data-table caption {
+    caption-side: top;
+    background-color: #001f3f;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+    border: 1px solid #001f3f;
+    border-bottom: none;
+    position: relative;
+  }
+  .caption-content {
+    display: inline-block;
+    margin: 0 auto;
+  }
+  .dq-link {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: white;
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+  .dq-link:hover {
+    color: #4CAF50; /* Green color on hover */
+  }
+  </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-database me-2"></i>Data Quality Column Config</h3>
+        </div>
+        <div class="card-body">
+           {{dq_rules}}
+
+           {% for t, c in dq_rules.items() %}
+           {{t}}
+           <p>{{c}}</p>
+           
+   {% endfor %}
+
+   <table class="data-table">
+    {% for t, c in columns.items() %}
+    <caption>
+        <span class="caption-content">{{ t }}</span>
+        
+      </caption>
+  <thead>
+    <tr>
+      <th>Column Name</th>
+      <th>Sample Data</th>
+      <th>Data Quality Rules</th>
+    
+     
+    </tr>
+  </thead>
+  <tbody>
+    {% if columns %}
+    {% set column_ = c[0] %}
+    {% for colname, coldata in column_.items() %}
+        <tr>
+          
+          <td>{{ colname }}</td><td>{{ coldata }}</td>
+          <td>
+           
+            <select class="form-select form-select-sm" aria-label="Select an option">
+            <option selected disabled>Open this select menu</option>
+            {% for t, c in dq_rules.items() %}
+            {%set d = c %}
+
+            <optgroup label="{{t}}" class="font-semibold text-teal-700">
+                
+                {% for ty, cy in c.items() %}
+                <option value="black_beans" title="Sub-type: A common ingredient in many cuisines.">&#x2003;{{ty}}</option>
+                {% for subs,desc in cy.items() %}
+                <option value="black_beans" title="Sub-type: A common ingredient in many cuisines.">&#x2003;&#x2003;{{subs}} - <i>{{desc.description}}</i></option>
+                {% endfor %}
+                {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+       
+        </tr>
+        {% endfor %}
+    {% else %}
+      <tr>
+        <td colspan="5">No columns described</td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+  </tbody>
+</table>
+</div>
+</div>
+{% endblock %}

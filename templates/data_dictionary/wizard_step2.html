@@ -1,0 +1,58 @@
+{% extends "client_home_base.html" %}
+
+{% block title %}New Connection - Step 2{% endblock %}
+
+{% block content %}
+<div class="step-indicator">
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Introduction</div>
+    </div>
+    <div class="step active">
+        <div class="step-number">2</div>
+        <div class="step-title">Database Type</div>
+    </div>
+    <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-title">Connection Details</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-database me-2"></i>Select Database Type</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('data_dictionary.dbselect_connection') }}">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+                {% for db in  db_type_list %}
+                
+                <div class="col">
+                    <input type="radio" class="btn-check" name="db_type" id="{{db['db_type']}}" value="{{db['db_type']}}" 
+                           {% if loop.first %}checked{% endif %} autocomplete="off">
+                    <label class="card db-card btn btn-outline-primary p-0" for="{{db['db_type']}}">
+                        <div class="card-body text-center">
+                            
+                            {% set color = "color: " + db.color %}
+                            <i class="{{ db['icon'] }} db-icon" style="{{color }}"></i>
+                            
+                            <h5 class="card-title">{{ db['display_name']}}</h5>
+                            <h5 class="card-title"></h5>
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('data_dictionary.dbselect') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Back
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    Next <i class="fas fa-arrow-right ms-1"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
