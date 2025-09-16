@@ -8,3 +8,4 @@ pymysql
 psycopg2-binary
 SQLAlchemy
 cohere==4.34 
+dotenv
