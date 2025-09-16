@@ -4,6 +4,7 @@ requests==2.31.0
 cryptography
 mysql-connector-python
 pyodbc
+pymysql
 psycopg2-binary
 SQLAlchemy
 cohere==4.34 
