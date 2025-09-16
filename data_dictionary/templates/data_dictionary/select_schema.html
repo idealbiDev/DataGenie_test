@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Schema</title>
+</head>
+<body>
+    <h1>Select Schema ({{ db_type|upper }} Database)</h1>
+    <form method="POST">
+        <select name="schema" required>
+            <option value="">-- Select --</option>
+            {% for schema in schemas %}
+                <option value="{{ schema }}">{{ schema }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Continue</button>
+    </form>
+    <a href="{{ url_for('data_quality_monitor.select_database_type') }}">Back</a>
+</body>
+</html>

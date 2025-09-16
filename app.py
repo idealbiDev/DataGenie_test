@@ -8,12 +8,19 @@ from dotenv import load_dotenv
 import pyodbc,pymysql
 from db import get_conn,get_db_connection
 from utils_main import getAdvert, getSolution
+
+from data_dictionary import data_dictionary_bp
+
 # --- Basic App Setup ---
 BASE_DIR = Path(__file__).parent
 app = Flask(__name__,
             template_folder=BASE_DIR / "templates",
             static_folder=BASE_DIR / "static")
 app.secret_key = "SECRET_KEY"
+
+app.register_blueprint(data_dictionary_bp, url_prefix='/dictionary')
+
+
 # --- Encryption Key (Required to read the files) ---
 ENCRYPTION_KEY = b'H_2mTjFv5nWr7fGJQyGH72wOSuM9FyPQPoPv0rECptQ='
 cipher = Fernet(ENCRYPTION_KEY)

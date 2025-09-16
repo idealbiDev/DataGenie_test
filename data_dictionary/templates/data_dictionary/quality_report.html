@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quality Report: {{ table_name }}</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f2f2f2; }
+        .good { color: green; }
+        .bad { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Data Quality Report: {{ table_name }}</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Column</th>
+                <th>Data Type</th>
+                <th>Completeness</th>
+                <th>Null Count</th>
+                <th>Validity</th>
+                <th>Uniqueness</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in report %}
+                <tr>
+                    <td>{{ row.ColumnName }}</td>
+                    <td>{{ row.ColumnDataType }}</td>
+                    <td class="{{ 'good' if '100.00' in row.DataCompleteness else 'bad' }}">
+                        {{ row.DataCompleteness }}
+                    </td>
+                    <td>{{ row.NullCounts }}</td>
+                    <td class="{{ 'good' if '100.00' in row.DataValidityConsistency else 'bad' }}">
+                        {{ row.DataValidityConsistency }}
+                    </td>
+                    <td>{{ row.UniqueRecords }} unique</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <p>
+        <a href="/quality/history/{{ db_type }}/{{ table_name }}">View History</a> |
+        <a href="/dictionary/{{ db_type }}/{{ table_name }}">Back to Dictionary</a>
+    </p>
+</body>
+</html>

@@ -1,0 +1,613 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">🤖 AI-Powered Data Mapping Tool</h1>
+    
+    <!-- Connection Status -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 dark:bg-yellow-900/20 dark:border-yellow-800">
+        <h3 class="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">🔗 Current Database Connection</h3>
+        {% if has_db_connection %}
+            <div class="text-green-700 dark:text-green-400">
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    ✅ Connected to: {{ db_config.db_type|upper }} database
+                </div>
+                <div class="text-sm mt-1 text-gray-600 dark:text-gray-400">
+                    {{ connection_string|truncate(80) }}
+                </div>
+            </div>
+        {% else %}
+            <div class="text-red-700 dark:text-red-400">
+                <div class="flex items-center">
+                    <i class="fas fa-times-circle mr-2"></i>
+                    ❌ No database connection configured.
+                </div>
+                <a href="{{ url_for('index') }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm mt-1 block">
+                    Configure connection
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="table-count">0</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Source Tables</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 text-center">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400" id="column-count">0</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Columns Loaded</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600 dark:text-purple-400" id="mapping-count">0</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Current Mappings</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 text-center">
+            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400" id="ai-suggestion-count">0</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">AI Suggestions</div>
+        </div>
+    </div>
+    
+    <!-- AI Suggestions Section -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 dark:bg-yellow-900/20 dark:border-yellow-800" id="ai-suggestions-section" style="display: none;">
+        <h3 class="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">🤖 AI Mapping Suggestions</h3>
+        <p class="text-yellow-700 dark:text-yellow-300 mb-4">Based on column names and descriptions, our AI suggests these mappings:</p>
+        <div id="ai-suggestions-list" class="space-y-3"></div>
+        <div class="flex space-x-3 mt-4">
+            <button onclick="applyAllSuggestions()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                Apply All Suggestions
+            </button>
+            <button onclick="hideSuggestions()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+                Hide Suggestions
+            </button>
+        </div>
+    </div>
+    
+    <!-- Tables Container -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Source Table -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 -mx-4 -mt-4 rounded-t-lg mb-4">
+                <h3 class="text-lg font-semibold">📁 Source Table</h3>
+            </div>
+            <select id="source-table-select" class="w-full p-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white mb-4">
+                <option value="">Select Source Table</option>
+            </select>
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 h-96 overflow-y-auto" id="source-columns"></div>
+        </div>
+
+        <!-- Target Tables -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div class="bg-gradient-to-r from-green-600 to-teal-600 text-white p-3 -mx-4 -mt-4 rounded-t-lg mb-4">
+                <h3 class="text-lg font-semibold">🎯 Target Tables</h3>
+            </div>
+            <div class="flex space-x-2 mb-4">
+                <button onclick="addTargetTable()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Add Target Table
+                </button>
+                <button onclick="generateAISuggestions()" id="ai-suggest-btn" 
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center"
+                        {% if not has_db_connection %}disabled{% endif %}>
+                    <i class="fas fa-robot mr-2"></i>
+                    <span id="ai-button-text">Generate AI Suggestions</span>
+                    <span id="ai-loading" class="ml-2 hidden">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    </span>
+                </button>
+            </div>
+            <div id="target-table-container" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- Mapping Area -->
+    <div class="bg-gray-100 dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 mb-6 text-center" 
+         id="mapping-area" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)" ondragleave="dragLeaveHandler(event)">
+        <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2">✨ Drag columns here to create mappings</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-4">Drop source columns on the left and target columns on the right</p>
+        <div id="mapping-pairs" class="space-y-3"></div>
+    </div>
+
+    <!-- Session Info -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">💾 Mapping Session</h3>
+        <input type="text" id="session-name" placeholder="Session Name (e.g., Customer Data Integration)" 
+               class="w-full p-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white mb-3">
+        <textarea id="session-description" placeholder="Session Description (e.g., Mapping customer data across sales and marketing systems)" 
+                  rows="3" class="w-full p-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex justify-center mb-6">
+        <button onclick="saveMappings()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors font-semibold">
+            💾 Save All Mappings
+        </button>
+    </div>
+
+    <!-- Existing Mappings -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">📋 Existing Mappings</h3>
+        <div id="existing-mappings" class="space-y-3"></div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    // Global variables
+    const API_BASE = "{{ url_for('data_mapping.index') }}";
+    const HAS_DB_CONNECTION = {{ has_db_connection|lower }};
+    let currentMappings = [];
+    let aiSuggestions = [];
+    let tablesData = {};
+
+    // Initialize the application
+    function initializeDataMapping() {
+        if (HAS_DB_CONNECTION) {
+            loadTableList();
+            loadExistingMappings();
+            updateStats();
+        } else {
+            document.getElementById('source-table-select').disabled = true;
+            document.getElementById('ai-suggest-btn').disabled = true;
+        }
+    }
+
+    // Load available tables
+    async function loadTableList() {
+        try {
+            const response = await fetch(`${API_BASE}/api/tables`);
+            const tables = await response.json();
+            
+            const sourceSelect = document.getElementById('source-table-select');
+            sourceSelect.innerHTML = '<option value="">Select Source Table</option>';
+            tables.forEach(table => {
+                const option = document.createElement('option');
+                option.value = table;
+                option.textContent = table;
+                sourceSelect.appendChild(option);
+            });
+            
+            sourceSelect.onchange = () => loadSourceTable(sourceSelect.value);
+        } catch (error) {
+            console.error('Error loading tables:', error);
+            showNotification('Error loading tables', 'error');
+        }
+    }
+
+    // Load source table columns
+    async function loadSourceTable(tableName) {
+        if (!tableName) return;
+        
+        try {
+            const response = await fetch(`${API_BASE}/api/columns/${tableName}`);
+            const columns = await response.json();
+            
+            const container = document.getElementById('source-columns');
+            container.innerHTML = '';
+            
+            columns.forEach(column => {
+                const div = createColumnItem(column, tableName, 'source');
+                container.appendChild(div);
+            });
+            
+            updateStats();
+        } catch (error) {
+            console.error('Error loading source table:', error);
+            showNotification('Error loading source table', 'error');
+        }
+    }
+
+    // Create column item element
+    function createColumnItem(column, tableName, type) {
+        const div = document.createElement('div');
+        div.className = 'bg-white dark:bg-gray-600 p-3 rounded-lg border border-gray-200 dark:border-gray-500 mb-2 cursor-move hover:shadow-md transition-shadow';
+        div.draggable = true;
+        div.setAttribute('data-type', type);
+        div.setAttribute('data-table', tableName);
+        div.setAttribute('data-column', column.column_name);
+        div.ondragstart = (e) => dragStartHandler(e, type);
+        
+        div.innerHTML = `
+            <div class="font-semibold text-gray-800 dark:text-white">${column.column_name}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                ${column.business_purpose?.substring(0, 60) || 'No description available'}...
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Type: ${column.data_type} | Nullable: ${column.is_nullable}
+            </div>
+        `;
+        return div;
+    }
+
+    // Add target table
+    function addTargetTable() {
+        const container = document.getElementById('target-table-container');
+        if (container.children.length >= 3) {
+            showNotification('Maximum 3 target tables allowed', 'warning');
+            return;
+        }
+
+        const tableId = `target-${Date.now()}`;
+        const div = document.createElement('div');
+        div.className = 'bg-gray-50 dark:bg-gray-700 p-3 rounded-lg';
+        div.innerHTML = `
+            <div class="font-semibold text-gray-800 dark:text-white mb-2">🎯 Target Table</div>
+            <select onchange="loadTargetTable('${tableId}', this.value)" 
+                    class="w-full p-2 border border-gray-300 rounded-lg dark:bg-gray-600 dark:border-gray-500 dark:text-white mb-2">
+                <option value="">Select Table</option>
+            </select>
+            <div class="bg-white dark:bg-gray-600 rounded-lg p-2 h-48 overflow-y-auto" id="target-columns-${tableId}"></div>
+        `;
+        container.appendChild(div);
+        
+        // Populate table options
+        const select = div.querySelector('select');
+        Object.keys(tablesData).forEach(table => {
+            const option = document.createElement('option');
+            option.value = table;
+            option.textContent = table;
+            select.appendChild(option);
+        });
+    }
+
+    // Load target table columns
+    async function loadTargetTable(tableId, tableName) {
+        if (!tableName) return;
+        
+        try {
+            if (!tablesData[tableName]) {
+                const response = await fetch(`${API_BASE}/api/columns/${tableName}`);
+                tablesData[tableName] = await response.json();
+            }
+            
+            const container = document.getElementById(`target-columns-${tableId}`);
+            container.innerHTML = '';
+            
+            tablesData[tableName].forEach(column => {
+                const div = createColumnItem(column, tableName, 'target');
+                container.appendChild(div);
+            });
+        } catch (error) {
+            console.error('Error loading target table:', error);
+            showNotification('Error loading target table', 'error');
+        }
+    }
+
+    // Drag and drop handlers
+    function dragStartHandler(e, type) {
+        const table = e.target.getAttribute('data-table');
+        const column = e.target.getAttribute('data-column');
+        e.dataTransfer.setData('text/plain', `${type}:${table}:${column}`);
+    }
+
+    function dragOverHandler(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('bg-blue-50', 'dark:bg-blue-900/20');
+    }
+
+    function dragLeaveHandler(e) {
+        e.currentTarget.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+    }
+
+    function dropHandler(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+        
+        const data = e.dataTransfer.getData('text/plain').split(':');
+        const type = data[0];
+        const table = data[1];
+        const column = data[2];
+        
+        if (type === 'source') {
+            currentMappings.push({
+                sourceTable: table,
+                sourceColumn: column,
+                targetTable: null,
+                targetColumn: null
+            });
+        } else if (type === 'target') {
+            const incompleteMapping = currentMappings.find(m => !m.targetTable);
+            if (incompleteMapping) {
+                incompleteMapping.targetTable = table;
+                incompleteMapping.targetColumn = column;
+            } else {
+                currentMappings.push({
+                    sourceTable: null,
+                    sourceColumn: null,
+                    targetTable: table,
+                    targetColumn: column
+                });
+            }
+        }
+        
+        renderCurrentMappings();
+        updateStats();
+    }
+
+    // Render current mappings
+    function renderCurrentMappings() {
+        const container = document.getElementById('mapping-pairs');
+        
+        if (currentMappings.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">No mappings yet. Drag columns to create mappings.</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        currentMappings.forEach((mapping, index) => {
+            const div = document.createElement('div');
+            div.className = 'bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-700';
+            
+            const sourceText = mapping.sourceTable ? 
+                `${mapping.sourceTable}.${mapping.sourceColumn}` : 
+                '<span class="text-gray-500">❓ Drag source column</span>';
+            
+            const targetText = mapping.targetTable ? 
+                `${mapping.targetTable}.${mapping.targetColumn}` : 
+                '<span class="text-gray-500">❓ Drag target column</span>';
+            
+            div.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-white dark:bg-gray-600 px-3 py-1 rounded border">${sourceText}</div>
+                        <div class="text-blue-600 dark:text-blue-400 font-bold">→</div>
+                        <div class="bg-white dark:bg-gray-600 px-3 py-1 rounded border">${targetText}</div>
+                    </div>
+                    <button onclick="removeMapping(${index})" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Remove mapping
+    function removeMapping(index) {
+        currentMappings.splice(index, 1);
+        renderCurrentMappings();
+        updateStats();
+    }
+
+    // Generate AI suggestions
+    async function generateAISuggestions() {
+        const sourceTable = document.getElementById('source-table-select').value;
+        const targetTables = Array.from(document.querySelectorAll('#target-table-container select'))
+            .map(select => select.value)
+            .filter(value => value);
+        
+        if (!sourceTable || targetTables.length === 0) {
+            showNotification('Please select source and target tables first', 'warning');
+            return;
+        }
+
+        // Show loading state
+        document.getElementById('ai-button-text').classList.add('hidden');
+        document.getElementById('ai-loading').classList.remove('hidden');
+
+        try {
+            const response = await fetch(`${API_BASE}/api/ai/suggestions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    source_table: sourceTable, 
+                    target_tables: targetTables 
+                })
+            });
+            
+            aiSuggestions = await response.json();
+            renderAISuggestions();
+            document.getElementById('ai-suggestions-section').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error generating AI suggestions:', error);
+            showNotification('Error generating AI suggestions', 'error');
+        } finally {
+            document.getElementById('ai-button-text').classList.remove('hidden');
+            document.getElementById('ai-loading').classList.add('hidden');
+        }
+    }
+
+    // Render AI suggestions
+    function renderAISuggestions() {
+        const container = document.getElementById('ai-suggestions-list');
+        
+        if (aiSuggestions.length === 0) {
+            container.innerHTML = '<p class="text-yellow-700 dark:text-yellow-300">No AI suggestions found. Try adding more target tables.</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        aiSuggestions.forEach((suggestion, index) => {
+            const confidenceClass = suggestion.confidence > 0.8 ? 
+                'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                suggestion.confidence > 0.6 ?
+                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+            
+            const div = document.createElement('div');
+            div.className = 'bg-white dark:bg-gray-700 p-3 rounded-lg border border-yellow-200 dark:border-yellow-700 cursor-pointer hover:shadow-md transition-shadow';
+            div.onclick = () => applySuggestion(suggestion);
+            
+            div.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-semibold">${suggestion.source_table}.${suggestion.source_column}</span>
+                        <span class="text-blue-600 dark:text-blue-400">→</span>
+                        <span class="font-semibold">${suggestion.target_table}.${suggestion.target_column}</span>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-xs font-medium ${confidenceClass}">
+                        ${Math.round(suggestion.confidence * 100)}% confident
+                    </span>
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-300">
+                    ${suggestion.reason}
+                </div>
+            `;
+            container.appendChild(div);
+        });
+        
+        updateStats();
+    }
+
+    // Apply a single suggestion
+    function applySuggestion(suggestion) {
+        // Check if mapping already exists
+        const exists = currentMappings.some(m => 
+            m.sourceTable === suggestion.source_table &&
+            m.sourceColumn === suggestion.source_column &&
+            m.targetTable === suggestion.target_table &&
+            m.targetColumn === suggestion.target_column
+        );
+        
+        if (!exists) {
+            currentMappings.push({
+                sourceTable: suggestion.source_table,
+                sourceColumn: suggestion.source_column,
+                targetTable: suggestion.target_table,
+                targetColumn: suggestion.target_column,
+                confidence: suggestion.confidence
+            });
+            
+            renderCurrentMappings();
+            updateStats();
+            
+            // Remove from suggestions
+            aiSuggestions = aiSuggestions.filter(s => 
+                !(s.source_table === suggestion.source_table &&
+                  s.source_column === suggestion.source_column &&
+                  s.target_table === suggestion.target_table &&
+                  s.target_column === suggestion.target_column)
+            );
+            
+            if (aiSuggestions.length === 0) {
+                hideSuggestions();
+            } else {
+                renderAISuggestions();
+            }
+        }
+    }
+
+    // Apply all suggestions
+    function applyAllSuggestions() {
+        aiSuggestions.forEach(suggestion => applySuggestion(suggestion));
+    }
+
+    // Hide suggestions
+    function hideSuggestions() {
+        document.getElementById('ai-suggestions-section').style.display = 'none';
+    }
+
+    // Save mappings
+    async function saveMappings() {
+        const sessionName = document.getElementById('session-name').value;
+        if (!sessionName) {
+            showNotification('Please enter a session name', 'warning');
+            return;
+        }
+
+        // Filter out incomplete mappings
+        const completeMappings = currentMappings.filter(m => 
+            m.sourceTable && m.sourceColumn && m.targetTable && m.targetColumn
+        );
+
+        if (completeMappings.length === 0) {
+            showNotification('No complete mappings to save', 'warning');
+            return;
+        }
+
+        try {
+            // Save each mapping
+            for (const mapping of completeMappings) {
+                await fetch(`${API_BASE}/api/mappings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source_table: mapping.sourceTable,
+                        source_column: mapping.sourceColumn,
+                        target_table: mapping.targetTable,
+                        target_column: mapping.targetColumn,
+                        mapping_type: 'exact',
+                        confidence_score: mapping.confidence || 1.0,
+                        created_by: 'user'
+                    })
+                });
+            }
+
+            // Clear current mappings
+            currentMappings = [];
+            renderCurrentMappings();
+            loadExistingMappings();
+            updateStats();
+
+            showNotification(`Saved ${completeMappings.length} mappings successfully!`, 'success');
+            
+        } catch (error) {
+            console.error('Error saving mappings:', error);
+            showNotification('Error saving mappings', 'error');
+        }
+    }
+
+    // Load existing mappings
+    async function loadExistingMappings() {
+        try {
+            const response = await fetch(`${API_BASE}/api/mappings`);
+            const mappings = await response.json();
+            
+            const container = document.getElementById('existing-mappings');
+            
+            if (mappings.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">No existing mappings found.</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            mappings.forEach(mapping => {
+                const div = document.createElement('div');
+                div.className = 'bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-200 dark:border-gray-600';
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-semibold">${mapping.source_table}.${mapping.source_column}</span>
+                            <span class="text-blue-600 dark:text-blue-400">→</span>
+                            <span class="font-semibold">${mapping.target_table}.${mapping.target_column}</span>
+                        </div>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">
+                            ${new Date(mapping.created_at).toLocaleDateString()}
+                        </span>
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        Type: ${mapping.mapping_type} | Confidence: ${Math.round(mapping.confidence_score * 100)}%
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        } catch (error) {
+            console.error('Error loading existing mappings:', error);
+        }
+    }
+
+    // Update statistics
+    function updateStats() {
+        const completeMappings = currentMappings.filter(m => m.sourceTable && m.targetTable).length;
+        document.getElementById('mapping-count').textContent = completeMappings;
+        document.getElementById('ai-suggestion-count').textContent = aiSuggestions.length;
+        
+        // Update table and column counts (you might want to implement these)
+        document.getElementById('table-count').textContent = Object.keys(tablesData).length;
+        let totalColumns = 0;
+        Object.values(tablesData).forEach(columns => totalColumns += columns.length);
+        document.getElementById('column-count').textContent = totalColumns;
+    }
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+        // You can implement a toast notification system here
+        alert(`${type.toUpperCase()}: ${message}`);
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', initializeDataMapping);
+</script>
+{% endblock %}

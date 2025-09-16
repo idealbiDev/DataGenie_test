@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tables in {{ schema }}</title>
+</head>
+<body>
+    <h1>Tables in schema: {{ schema }} ({{ db_type|upper }})</h1>
+    <ul>
+        {% for table in tables %}
+            <li>{{ table }}</li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('data_quality_monitor.select_schema', db_type=db_type) }}">Back</a>
+</body>
+</html>

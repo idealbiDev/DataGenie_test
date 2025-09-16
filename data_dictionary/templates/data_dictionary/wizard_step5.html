@@ -1,0 +1,209 @@
+{% extends "client_home_base.html" %}
+
+{% block title %}New Connection - Step 1{% endblock %}
+
+{% block content %}
+<div class="step-indicator">
+      <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Introduction</div>
+    </div>
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Database Type</div>
+    </div>
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Connection Details</div>
+    </div>
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Database Details</div>
+    </div>
+    <div class="step active">
+        <div class="step-number">5</div>
+        <div class="step-title">Schema Tables</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-cog me-2"></i>{{dbschema }}</h3>
+    </div>
+    <div class="card-body">
+        {% if db_type == 'file_system' %}
+        {% set t_label = 'File Name' %}
+        {% else %}
+        {% set t_label = 'Table Name' %}
+        {% endif %}
+
+        <form
+            class="grid-form"
+            method="POST"
+            action="{{ url_for('data_dictionary.doservice') }}"
+            x-data="{
+                search: '',
+                maxSelections: {% if db_type == 'file_system' %}5{% else %}Infinity{% endif %},
+                selectedDict: [],
+                selectedDq: [],
+                checkSelection(event, type, value) {
+                    const selected = type === 'dict' ? this.selectedDict : this.selectedDq;
+                    if (event.target.checked) {
+                        if (selected.length >= this.maxSelections) {
+                            event.preventDefault();
+                            event.target.checked = false;
+                            alert('Maximum ' + this.maxSelections + ' selections allowed for {{t_label | lower}}.');
+                        } else {
+                            selected.push(value);
+                        }
+                    } else {
+                        const index = selected.indexOf(value);
+                        if (index !== -1) selected.splice(index, 1);
+                    }
+                },
+                matchesSearch(item) {
+                    return this.search === '' || item.toLowerCase().includes(this.search.toLowerCase());
+                }
+            }"
+        >
+            <input type="hidden" name="db_type" value="{{db_type }}">
+            <input type="hidden" name="conn_str" value="{{conn_str }}">
+            <input type="hidden" name="dbschema" value="{{dbschema }}">
+            <input type="hidden" name="conn_params" value="{{conn_params }}">
+
+            <!-- Search Input -->
+            <div class="mb-4">
+                <input
+                    x-model="search"
+                    type="text"
+                    placeholder="Search {{t_label | lower}}..."
+                    class="w-full bg-white border border-gray-300 rounded-md p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600"
+                    aria-label="Search {{t_label | lower}}"
+                >
+            </div>
+
+            <div class="max-h-64 overflow-y-auto border border-gray-300 rounded">
+  <table class="table striped row-hover border responsive-md table-auto w-full border-collapse">
+                <thead class="bg-gray-200 sticky top-0">
+                    <tr>
+                        <th style="width: 40%;">{{t_label}}</th>
+                          <th style="width: 40%;">Table Business Context</th>
+                        <th>Generate Dictionary</th>
+                        <th>Run DQ Check</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if db_type == 'file_system' %}
+                        {% for dl in form_data.keys() %}
+                            {% if dl not in ['db_type', 'conn_str', 'conn_params', 'schema'] %}
+                            <tr x-show="matchesSearch('{{dl | replace("'", "\\'") }}')" x-cloak>
+                                <td>{{dl}}</td>
+                                <td><input name="tbl_bus_cntxt_{{dl}}"
+                                        type="text" placeholder="Optional Context..."
+                    class="w-full bg-white border border-gray-300 rounded-md p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600"/></td>
+                                <td>
+                                    <input
+                                        type="checkbox"
+                                        id="dict_{{dl}}"
+                                        name="generate_dict"
+                                        value="{{dl}}"
+                                        @change="checkSelection($event, 'dict', '{{dl | replace("'", "\\'") }}')"
+                                    >
+                                    <label for="dict_{{dl}}"></label>
+                                </td>
+                                <td>
+                                    <input
+                                        type="checkbox"
+                                        id="dq_{{dl}}"
+                                        name="run_dq"
+                                        value="{{dl}}"
+                                        @change="checkSelection($event, 'dq', '{{dl | replace("'", "\\'") }}')"
+                                    >
+                                    <label for="dq_{{dl}}"></label>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        {% for dl in data_list %}
+                            {% if dl not in ['db_type', 'conn_str', 'schema'] %}
+                            <tr x-show="matchesSearch('{{dl | replace("'", "\\'") }}')" x-cloak>
+                                <td>{{dl}}</td>
+                                <td><input
+                                        type="text"/></td>
+                                <td>
+                                    <input type="checkbox" id="dict_{{dl}}" name="generate_dict" value="{{dl}}">
+                                    <label for="dict_{{dl}}"></label>
+                                </td>
+                                <td>
+                                    <input type="checkbox" id="dq_{{dl}}" name="run_dq" value="{{dl}}">
+                                    <label for="dq_{{dl}}"></label>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+              </tbody>
+  </table>
+</div>
+
+            {% if db_type == 'file_system' %}
+            <div class="alert alert-info mt-4">
+                <i class="fas fa-info-circle me-2"></i>
+                Maximum 5 {{t_label | lower}} allowed
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ url_for('data_dictionary.dbselect_type') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Back
+                </a>
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        Next <i class="fas fa-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<style>
+        table.scrolldown {
+            width: 100%;
+
+            /* border-collapse: collapse; */
+            border-spacing: 0;
+            border: 2px solid black;
+        }
+
+        /* To display the block as level element */
+        table.scrolldown tbody,
+        table.scrolldown thead {
+            display: block;
+        }
+
+       
+
+        table.scrolldown tbody {
+
+            /* Set the height of table body */
+            height: 50vh;
+
+            /* Set vertical scroll */
+            overflow-y: auto;
+
+            /* Hide the horizontal scroll */
+            overflow-x: hidden;
+        }
+
+        tbody {
+            border-top: 2px solid black;
+        }
+
+        
+
+        
+    </style>
+<!-- Include Alpine.js CDN -->
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends "client_home_base.html" %}
+
+{% block title %}New Connection - Step 1{% endblock %}
+
+{% block content %}
+<style>
+    .data-table {
+      width: 70%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 10px; /* Table body font size */
+    }
+    
+    .data-table th, .data-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .data-table th {
+      background-color: #c0c0c0; /* Silver gray */
+      font-size: 10px; /* Header font size */
+    }
+    .data-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+   
+  
+  .data-table caption {
+    caption-side: top;
+    background-color: #001f3f;
+    color: white;
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 12px;
+    border: 1px solid #001f3f;
+    border-bottom: none;
+    position: relative;
+  }
+  .caption-content {
+    display: inline-block;
+    margin: 0 auto;
+  }
+  .dq-link {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: white;
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+  .dq-link:hover {
+    color: #4CAF50; /* Green color on hover */
+  }
+  select {
+            width: 100%;
+            padding: 5px;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+  </style>
+<div class="step-indicator">
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Introduction</div>
+    </div>
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Database Type</div>
+    </div>
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Connection Details</div>
+    </div>
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Database Details</div>
+    </div>
+    <div class="step completed">
+        <div class="step-number"><i class="fas fa-check"></i></div>
+        <div class="step-title">Service Tables</div>
+    </div>
+    <div class="step active">
+        <div class="step-number">6</div>
+        <div class="step-title">Tables List</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-database me-2"></i>Table Column List</h3>
+    </div>
+    <div class="card-body">
+    
+        <form class="grid-form" method="POST" action="{{ url_for('data_dictionary.dbdictionary') }}">
+           
+            <input type="hidden" name="conn_str" value="{{ doservice_list.conn_str | safe }}">
+            <input type="hidden" name="dict_tables" value="{{ doservice_list.dict_tables }}">
+            <input type="hidden" name="dq_tables" value="{{ (doservice_list.dq_tables | tojson) if doservice_list.dq_tables is defined and doservice_list.dq_tables else '[]' | safe }}">
+            <input type="hidden" name="db_schema_name" value="{{ doservice_list.db_schema_name | safe }}">
+            <input type="hidden" name="db_type" value="{{ doservice_list.db_type | safe }}">
+            <input type="hidden" name="conn_params" value="{{ doservice_list.conn_params | safe }}">
+       
+          
+
+       {% if data %}
+       {% for table_name, column_values in all_column_values.items() %}
+           <div class="table-container">
+               <table class="data-table">
+                    <caption>
+                        <span class="caption-content">{{ table_name }}</span>
+          </caption>
+                  <thead>
+            <tr>
+                <th>Column Name</th>
+                <th>Sample Data</th>
+                {% if table_name in run_dq_tables %}
+                <th>Data Quality Rules</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for column, value in column_values.items() %}
+            <tr>
+                <td>{{ column }}</td>
+                <td>{{ value | default('N/A', true) }}</td>
+                
+                {% if table_name in run_dq_tables %}
+                <td><select name="dq_rule_{{ df_name }}_{{ column }}">
+                        <option value="">Select a rule</option>
+                        {% for rule in dq_rules %}
+                        <option value="{{ rule.rule }}" title="{{ rule.description }}">{{ rule.rule }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="tooltip">
+                        <span class="tooltiptext">
+                            {% for rule in dq_rules %}
+                                {% if loop.first %}{{ rule.description }}{% endif %}
+                            {% endfor %}
+                        </span>
+                    </span></td> 
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+           </div>
+       {% endfor %}
+   {% else %}
+       <p>No data available.</p>
+   {% endif %}
+
+   <div class="d-flex justify-content-between mt-4">
+    <a href="#" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Back
+    </a>
+    <div>
+        <button type="submit" class="btn btn-primary">
+            Next <i class="fas fa-arrow-right ms-1"></i>
+        </button>
+    </div>
+</div>
+</form>
+    </div>
+</div>
+{% endblock %}

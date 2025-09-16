@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDM Assistance</title>
+</head>
+<body>
+    <h1>MDM Assistant</h1>
+    <nav>
+        <a href="{{ url_for('data_quality_monitor.datamonitor') }}">Home</a> |
+        <a href="{{ url_for('data_quality_monitor.database_select') }}">Select Database</a> |
+        <a href="{{ url_for('data_quality_monitor.dictionary') }}">List Tables</a>
+    </nav>
+    <div style="margin-top: 20px; padding: 20px;">
+        {% if content_template %}
+            {% include content_template %}
+        {% else %}
+            <p>Welcome to Data Monitor. Use the navigation to proceed.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

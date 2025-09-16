@@ -43,8 +43,8 @@ connection_status = {
 
 # Import and register blueprints
 try:
-    from data_mapping import data_mapping_bp
-    from data_mapping.models import db as mapping_db
+    from harmonizer import data_mapping_bp
+    from harmonizer.harmoniser_functions import db as mapping_db
     
     # Initialize the mapping database
     mapping_db.init_app(app)
@@ -392,7 +392,7 @@ if __name__ == "__main__":
     # Create database tables for mapping tool
     with app.app_context():
         try:
-            from data_mapping.models import db as mapping_db
+            from harmonizer.harmoniser_functions import db as mapping_db
             mapping_db.create_all()
             print("✅ Data Mapping database tables created")
         except Exception as e:

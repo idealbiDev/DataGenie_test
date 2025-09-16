@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dictionary: {{ table_name }}</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Data Dictionary: {{ table_name }}</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Nullable</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in dictionary %}
+                <tr>
+                    <td>{{ item.column }}</td>
+                    <td>{{ item.type }}</td>
+                    <td>{{ item.nullable }}</td>
+                    <td>{{ item.description }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="db-selector">
+        <strong>Database:</strong>
+        <a href="/dictionary/local/{{ table_name }}" 
+           class="{{ 'active' if db_type == 'local' }}">Local SQL</a>
+        <a href="/dictionary/redshift/{{ table_name }}"
+           class="{{ 'active' if db_type == 'redshift' }}">Redshift</a>
+    </div>
+    
+    <!-- Add search box -->
+    <form action="/dictionary/search" method="get">
+        <input type="hidden" name="db" value="{{ db_type }}">
+        <input type="text" name="q" placeholder="Search all tables/columns...">
+        <button type="submit">Search</button>
+    </form>
+    <div class="actions">
+        <a href="/quality/{{ db_type }}/{{ table_name }}" class="btn">
+            Run Data Quality Check
+        </a>
+    </div>
+    <p>
+        <a href="/dictionary/{{ table_name }}/export">Export as CSV</a> |
+        <a href="/dictionary">Back to All Tables</a>
+    </p>
+</body>
+</html>

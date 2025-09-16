@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Connection Wizard</title>
+    <!-- Metro UI CSS -->
+    <link rel="stylesheet" href="https://cdn.metroui.org.ua/v4.3.2/css/metro-all.min.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        .db-icon {
+            font-size: 24px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .db-option {
+            padding: 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .db-option:hover {
+            background-color: #e1e1e1;
+        }
+        .db-option.selected {
+            background-color: #d7edff;
+            border-left: 4px solid #1da1f2;
+        }
+    </style>
+</head>
+<body class="m4-cloak">
+    <div class="container">
+        <div class="stepper" data-role="stepper" id="connection-stepper">
+            <div class="step" id="step1">
+                <div class="step-content">
+                    <h2>Database Connection Wizard</h2>
+                    <p>This wizard will help you connect to your database. You'll need:</p>
+                    <ul>
+                        <li>Database server hostname or IP address</li>
+                        <li>Port number (if not using default)</li>
+                        <li>Database name</li>
+                        <li>Valid credentials (username/password)</li>
+                    </ul>
+                    <p>For file-based databases (SQLite, Access), you'll need the file path.</p>
+                </div>
+                <div class="step-actions">
+                    <button class="button primary" onclick="nextStep()">Next <span class="mif-arrow-right"></span></button>
+                </div>
+            </div>
+            
+            <div class="step" id="step2">
+                <div class="step-content">
+                    <h2>Select Database Type</h2>
+                    <div class="grid">
+                        <div class="row">
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('postgresql')" id="opt-postgresql">
+                                    <i class="fa fa-database db-icon" style="color: #336791"></i>
+                                    <strong>PostgreSQL</strong>
+                                </div>
+                            </div>
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('mysql')" id="opt-mysql">
+                                    <i class="fa fa-database db-icon" style="color: #4479A1"></i>
+                                    <strong>MySQL</strong>
+                                </div>
+                            </div>
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('redshift')" id="opt-redshift">
+                                    <i class="fa fa-database db-icon" style="color: #FF4500"></i>
+                                    <strong>Redshift</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('sqlite')" id="opt-sqlite">
+                                    <i class="fa fa-database db-icon" style="color: #003B57"></i>
+                                    <strong>SQLite</strong>
+                                </div>
+                            </div>
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('sqlserver')" id="opt-sqlserver">
+                                    <i class="fa fa-database db-icon" style="color: #A91C22"></i>
+                                    <strong>SQL Server</strong>
+                                </div>
+                            </div>
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('oracle')" id="opt-oracle">
+                                    <i class="fa fa-database db-icon" style="color: #F80000"></i>
+                                    <strong>Oracle</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('mariadb')" id="opt-mariadb">
+                                    <i class="fa fa-database db-icon" style="color: #003545"></i>
+                                    <strong>MariaDB</strong>
+                                </div>
+                            </div>
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('access')" id="opt-access">
+                                    <i class="fa fa-database db-icon" style="color: #A4373A"></i>
+                                    <strong>MS Access</strong>
+                                </div>
+                            </div>
+                            <div class="cell-md-4">
+                                <div class="db-option" onclick="selectDbType('firebird')" id="opt-firebird">
+                                    <i class="fa fa-database db-icon" style="color: #D90F16"></i>
+                                    <strong>Firebird</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="db_type" name="db_type">
+                </div>
+                <div class="step-actions">
+                    <button class="button" onclick="prevStep()"><span class="mif-arrow-left"></span> Back</button>
+                    <button class="button primary" onclick="nextStep()" id="next-btn-step2" disabled>Next <span class="mif-arrow-right"></span></button>
+                </div>
+            </div>
+            
+            <div class="step" id="step3">
+                <div class="step-content">
+                    <h2>Connection Details</h2>
+                    <div id="connection-fields">
+                        <!-- Dynamic fields will be inserted here -->
+                    </div>
+                </div>
+                <div class="step-actions">
+                    <button class="button" onclick="prevStep()"><span class="mif-arrow-left"></span> Back</button>
+                    <button type="submit" class="button primary">Connect <span class="mif-link"></span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metro UI JS -->
+    <script src="https://cdn.metroui.org.ua/v4.3.2/js/metro.min.js"></script>
+    
+    <script>
+        // Database configuration with field definitions
+        const DB_TYPES = {
+            'postgresql': {
+                'driver': 'postgresql+psycopg2',
+                'default_port': '5432',
+                'connection_string': '{driver}://{username}:{password}@{hostname}:{port}/{database}',
+                'fields': [
+                    {'name': 'hostname', 'label': 'Host', 'type': 'text', 'required': true, 
+                     'placeholder': 'server.example.com or IP address'},
+                    {'name': 'port', 'label': 'Port', 'type': 'number', 'default': '5432', 'required': true},
+                    {'name': 'database', 'label': 'Database Name', 'type': 'text', 'required': true},
+                    {'name': 'username', 'label': 'Username', 'type': 'text', 'required': true},
+                    {'name': 'password', 'label': 'Password', 'type': 'password', 'required': true},
+                ]
+            },
+            'redshift': {
+                'driver': 'redshift+psycopg2',
+                'default_port': '5439',
+                'connection_string': '{driver}://{username}:{password}@{hostname}:{port}/{database}',
+                'fields': [
+                    {'name': 'hostname', 'label': 'Cluster Endpoint', 'type': 'text', 'required': true, 
+                     'placeholder': 'your-cluster.xxxxxxxxx.us-west-2.redshift.amazonaws.com'},
+                    {'name': 'port', 'label': 'Port', 'type': 'number', 'default': '5439', 'required': true},
+                    {'name': 'database', 'label': 'Database Name', 'type': 'text', 'required': true},
+                    {'name': 'username', 'label': 'Username', 'type': 'text', 'required': true},
+                    {'name': 'password', 'label': 'Password', 'type': 'password', 'required': true},
+                ]
+            },
+            'sqlite': {
+                'driver': 'sqlite',
+                'default_port': '',
+                'connection_string': 'sqlite:///{database}',
+                'fields': [
+                    {'name': 'database', 'label': 'Database File Path', 'type': 'text', 
+                     'placeholder': '/path/to/database.db or :memory:', 'required': true},
+                ]
+            },
+            // ... other database types (same as previous example) ...
+        };
+
+        let currentStep = 1;
+        const totalSteps = 3;
+
+        function showStep(step) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            document.getElementById(`step${step}`).classList.add('active');
+            currentStep = step;
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                showStep(currentStep + 1);
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                showStep(currentStep - 1);
+            }
+        }
+
+        function selectDbType(dbType) {
+            // Update visual selection
+            document.querySelectorAll('.db-option').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`opt-${dbType}`).classList.add('selected');
+            
+            // Set hidden field value
+            document.getElementById('db_type').value = dbType;
+            
+            // Enable next button
+            document.getElementById('next-btn-step2').disabled = false;
+            
+            // Pre-generate connection fields for faster transition
+            generateConnectionFields(dbType);
+        }
+
+        function generateConnectionFields(dbType) {
+            const container = document.getElementById('connection-fields');
+            container.innerHTML = '';
+            
+            if (!dbType || !DB_TYPES[dbType]) return;
+            
+            const fields = DB_TYPES[dbType].fields;
+            
+            fields.forEach(field => {
+                const group = document.createElement('div');
+                group.className = 'form-group';
+                
+                const label = document.createElement('label');
+                label.textContent = field.label;
+                if (field.required) label.innerHTML += ' <span class="text-red">*</span>';
+                
+                let input;
+                if (field.type === 'textarea') {
+                    input = document.createElement('textarea');
+                    input.rows = 3;
+                } else {
+                    input = document.createElement('input');
+                    input.type = field.type;
+                }
+                
+                input.className = 'input-large';
+                input.name = field.name;
+                input.id = field.name;
+                if (field.placeholder) input.placeholder = field.placeholder;
+                if (field.default) input.value = field.default;
+                if (field.required) input.required = true;
+                
+                group.appendChild(label);
+                group.appendChild(input);
+                container.appendChild(group);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            showStep(1);
+        });
+    </script>
+</body>
+</html>
