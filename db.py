@@ -17,7 +17,7 @@ def get_conn():
     
 def get_db_connection():
     try:
-        conn = pymysql.connect(
+        dg_conn = pymysql.connect(
             host="102.222.124.10",
             user="idealbk8c9x0_app_usr",
             password="idealbi_app_user",
@@ -25,7 +25,7 @@ def get_db_connection():
             charset="utf8mb4",
             cursorclass=pymysql.cursors.DictCursor  # Returns rows as dictionaries
         )
-        return conn
+        return dg_conn
     except pymysql.Error as err:
         print(f"Database connection error: {err}")
         return None
