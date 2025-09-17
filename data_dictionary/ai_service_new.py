@@ -1,5 +1,5 @@
 import mysql.connector
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Tuple, Optional, Union
 import pandas as pd
 import requests
 import hashlib
@@ -25,10 +25,10 @@ logging.basicConfig(
 CACHE_DIR = 'ollama_cache'
 OLLAMA_CONFIG = {
     'url': 'http://localhost:11434/api/generate',
-    'model': 'llama3',
-    'timeout': 120,
-    'max_workers': 2,
-    'batch_size': 3,
+    'model': 'llama3.2:1b',  # Using smaller model by default
+    'timeout': 60,
+    'max_workers': 3,
+    'batch_size': 4,
     'retry_attempts': 3,
     'retry_delay': 2
 }
@@ -158,6 +158,8 @@ Clearly separate each column description with '---COLUMN---' marker.
         # Generate with retry logic
         for attempt in range(OLLAMA_CONFIG['retry_attempts']):
             try:
+                logging.info(f"Calling Ollama API for {len(columns_data)} columns (attempt {attempt + 1})")
+                
                 response = requests.post(
                     OLLAMA_CONFIG['url'],
                     json={
@@ -174,10 +176,15 @@ Clearly separate each column description with '---COLUMN---' marker.
                 )
                 
                 if response.status_code != 200:
-                    raise Exception(f"Ollama error: {response.status_code} {response.text}")
+                    error_msg = f"Ollama error: {response.status_code} {response.text}"
+                    logging.error(error_msg)
+                    raise Exception(error_msg)
 
                 data = response.json()
                 description = data.get("response", "").strip()
+                
+                if not description:
+                    raise Exception("Empty response from Ollama")
                 
                 # Parse the batch response
                 descriptions = description.split('---COLUMN---')
@@ -261,22 +268,31 @@ class DataDictionaryGenerator:
     
     @staticmethod
     def prepare_column_data(data_dict: Dict[str, pd.DataFrame]) -> List[Tuple[str, Dict[str, Any], List[Any]]]:
-        """Prepare column data for processing"""
+        """Prepare column data for processing - FIXED to handle different data types"""
         all_columns_data = []
+        
+        # Handle case where data_dict might be a list or other type
+        if not isinstance(data_dict, dict):
+            logging.error(f"Expected dict but got {type(data_dict)}: {data_dict}")
+            return all_columns_data
         
         for table_name, df in data_dict.items():
             if not isinstance(df, pd.DataFrame) or df.empty:
+                logging.warning(f"Skipping {table_name}: not a DataFrame or empty")
                 continue
             
             for column_name in df.columns:
-                sample_values = df[column_name].dropna().head(5).tolist()
-                column_info = {
-                    'COLUMN_NAME': column_name,
-                    'DATA_TYPE': str(df[column_name].dtype),
-                    'IS_NULLABLE': 'YES' if df[column_name].isna().any() else 'NO',
-                    'CHARACTER_MAXIMUM_LENGTH': None
-                }
-                all_columns_data.append((table_name, column_info, sample_values))
+                try:
+                    sample_values = df[column_name].dropna().head(5).tolist()
+                    column_info = {
+                        'COLUMN_NAME': column_name,
+                        'DATA_TYPE': str(df[column_name].dtype),
+                        'IS_NULLABLE': 'YES' if df[column_name].isna().any() else 'NO',
+                        'CHARACTER_MAXIMUM_LENGTH': None
+                    }
+                    all_columns_data.append((table_name, column_info, sample_values))
+                except Exception as e:
+                    logging.error(f"Error processing column {column_name} in table {table_name}: {e}")
         
         return all_columns_data
     
@@ -313,6 +329,7 @@ class DataDictionaryGenerator:
     def save_descriptions_to_db(descriptions: List[Dict[str, Any]], db_config: Dict[str, Any]):
         """Save descriptions to database"""
         if not descriptions:
+            logging.warning("No descriptions to save to database")
             return
         
         try:
@@ -348,7 +365,7 @@ class DataDictionaryGenerator:
             
         except Exception as e:
             logging.error(f"Error saving to database: {e}")
-            raise
+            # Don't raise here to allow the function to continue
     
     @classmethod
     def generate_column_descriptions_for_tables(cls, data_dict: Dict[str, pd.DataFrame],
@@ -359,14 +376,24 @@ class DataDictionaryGenerator:
         Main function to generate column descriptions
         Maintains backward compatibility with original signature
         """
+        logging.info("Starting column description generation")
+        
         # Parse connection string
         db_config = cls.parse_connection_string(connection_string)
+        logging.info(f"Using database config: {db_config['host']}:{db_config['port']}/{db_config['database']}")
+        
+        # Validate input data
+        if not data_dict or not isinstance(data_dict, dict):
+            logging.error(f"Invalid data_dict: expected dict, got {type(data_dict)}")
+            return []
         
         # Prepare all column data
         all_columns_data = cls.prepare_column_data(data_dict)
         if not all_columns_data:
             logging.warning("No column data to process")
             return []
+        
+        logging.info(f"Prepared {len(all_columns_data)} columns from {len(data_dict)} tables")
         
         # Ensure database table exists
         cls.ensure_descriptions_table(db_config)
@@ -380,6 +407,8 @@ class DataDictionaryGenerator:
         # Process columns in batches
         for i in range(0, total_columns, OLLAMA_CONFIG['batch_size']):
             batch = all_columns_data[i:i + OLLAMA_CONFIG['batch_size']]
+            logging.info(f"Processing batch {i//OLLAMA_CONFIG['batch_size'] + 1} with {len(batch)} columns")
+            
             batch_descriptions = OllamaClient.generate_descriptions_batch(batch)
             
             for table_name, column_info, sample_values in batch:

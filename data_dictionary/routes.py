@@ -215,11 +215,20 @@ def dbdictionary():
         if not dict_tables_t:
             return jsonify({'error': 'No tables selected'}), 400
         
-        # Parse table list
+        # Parse table list - FIXED to handle different formats
         try:
-            db_tables = eval(dict_tables_t[0])
-        except:
-            return jsonify({'error': 'Invalid table format'}), 400
+            if isinstance(dict_tables_t[0], str):
+                db_tables = eval(dict_tables_t[0])
+            else:
+                db_tables = dict_tables_t[0]
+                
+            # Ensure it's a list
+            if not isinstance(db_tables, list):
+                db_tables = [db_tables]
+                
+        except Exception as e:
+            logging.error(f"Error parsing table list: {e}")
+            return jsonify({'error': f'Invalid table format: {e}'}), 400
         
         # Get form fields
         conn_str = request.form.get('conn_str')
@@ -238,8 +247,19 @@ def dbdictionary():
             'conn_params': conn_params
         }
         
-        # Get sample data
+        logging.info(f"Starting data dictionary generation for tables: {db_tables}")
+        
+        # Get sample data - ensure it returns a dictionary
         data = get_top_records(doservice_list)
+        
+        # Validate that data is a dictionary
+        if not isinstance(data, dict):
+            logging.error(f"Expected dict from get_top_records, got {type(data)}")
+            # Try to convert if it's a list of DataFrames
+            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], pd.DataFrame):
+                data = {f"table_{i}": df for i, df in enumerate(data)}
+            else:
+                return jsonify({'error': 'Invalid data format returned from get_top_records'}), 500
         
         # Generate descriptions
         descriptions = DataDictionaryGenerator.generate_column_descriptions_for_tables(
@@ -248,6 +268,8 @@ def dbdictionary():
             db_type=doservice_list['db_type'],
             schema_name=doservice_list['db_schema_name']
         )
+        
+        logging.info(f"Generated {len(descriptions)} column descriptions")
         
         return render_template(
             'data_dictionary/wizard_data_new.html',
