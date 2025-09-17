@@ -1,5 +1,5 @@
-from sqlalchemy import create_engine
-from typing import List, Dict, Any
+import mysql.connector
+from typing import Dict, List, Any
 import pandas as pd
 import requests
 import hashlib
@@ -7,14 +7,34 @@ import pickle
 import os
 import re
 import logging
-# MySQL connection string (adjust with your credentials)
-# Format: mysql+pymysql://user:password@host:port/database
-MYSQL_CONNECTION_STRING = "mysql+pymysql://datagenie:P@ss1234@localhost:3306/datagenie"
+
+# Database configuration (replace with your actual credentials)
+db_config_local = {
+    'host': 'localhost',
+    'port': 3306,
+    'database': 'datagenie',
+    'user': 'datagenie',
+    'password': 'P@ss1234'
+}
 
 # Cache directory
 CACHE_DIR = 'ollama_cache'
 if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
+
+def local_db_connection(db_config):
+    """Establishes a connection to the local database using the provided config."""
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("SELECT VERSION()")
+        db_version = cursor.fetchone()
+        version_local = db_version[0]
+        logging.info(f"Connected to MySQL version: {version_local}")
+        return conn, cursor
+    except mysql.connector.Error as err:
+        logging.error(f"Database connection error: {err}")
+        raise
 
 def get_cache_key(prompt: str) -> str:
     return hashlib.md5(prompt.encode()).hexdigest()
@@ -99,10 +119,8 @@ def generate_column_description(table_name: str, column_info: Dict[str, Any], sa
 """
 
 def generate_column_descriptions_for_tables(data_dict: Dict[str, pd.DataFrame],
-                                            connection_string: str,
-                                            db_type: str,
-                                            schema_name: str = None):
-    engine = create_engine(MYSQL_CONNECTION_STRING)
+                                           db_config: Dict[str, Any],
+                                           schema_name: str = None):
     all_results = []
 
     for table_name, df in data_dict.items():
@@ -135,9 +153,55 @@ def generate_column_descriptions_for_tables(data_dict: Dict[str, pd.DataFrame],
                 'issues': parsed.get('issues', '')
             })
 
-    # Insert into MySQL
-    results_df = pd.DataFrame(all_results)
-    if not results_df.empty:
-        results_df.to_sql('column_descriptions', con=engine, if_exists='append', index=False)
+    # Insert into MySQL using mysql.connector
+    if all_results:
+        try:
+            conn, cursor = local_db_connection(db_config)
+            
+            # Create table if it doesn't exist
+            create_table_query = """
+            CREATE TABLE IF NOT EXISTS column_descriptions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                table_name VARCHAR(255) NOT NULL,
+                column_name VARCHAR(255) NOT NULL,
+                business_purpose TEXT,
+                data_quality_rules TEXT,
+                example_usage TEXT,
+                issues TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+            cursor.execute(create_table_query)
+            
+            # Insert data
+            insert_query = """
+            INSERT INTO column_descriptions 
+            (table_name, column_name, business_purpose, data_quality_rules, example_usage, issues)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            
+            for result in all_results:
+                cursor.execute(insert_query, (
+                    result['table_name'],
+                    result['column_name'],
+                    result['business_purpose'],
+                    result['data_quality_rules'],
+                    result['example_usage'],
+                    result['issues']
+                ))
+            
+            conn.commit()
+            logging.info(f"Successfully inserted {len(all_results)} records into column_descriptions table")
+            
+            cursor.close()
+            conn.close()
+            
+        except mysql.connector.Error as err:
+            logging.error(f"Database error: {err}")
+            # You might want to handle this error differently, e.g., return the results without inserting
+            raise
 
     return all_results
+
+# Usage example:
+# results = generate_column_descriptions_for_tables(your_data_dict, db_config_local)
