@@ -205,59 +205,60 @@ def doservice():
        )
 
 
-
 @data_dictionary_bp.route('/dbdictionary', methods=['POST'])
 def dbdictionary():
-    # Log request details
-    
-    print(f"Request Form: {request.form}")
-    print(f"Request Data: {request.data}")
-    dict_tables_t = request.form.getlist('dict_tables')
-    
-   
-    list_data = []
-    for t in dict_tables_t:
-        list_data =t
-    print('list_data_type: ',list_data)
-    db_tables = eval(list_data)
-    print('db_tabbles_type: ',type(db_tables))
-
-    # Get form fields
-    conn_str = request.form.get('conn_str')
-    dict_tables = db_tables
-    dq_tables = request.form.get('dq_tables')
-    db_schema_name = request.form.get('db_schema_name')
-    db_type = request.form.get('db_type')
-    conn_params=request.form.get('conn_params')
-
-    
-    # Construct doservice_list
-    doservice_list = {
-        'dict_tables': dict_tables,
-        'dq_tables': dq_tables,
-        'db_type': db_type,
-        'conn_str': conn_str,
-        'db_schema_name': db_schema_name,
-        'conn_params':conn_params
-    }
-   
-    #return doservice_list
-    #doservice_list = request.get_json()  # Parse JSON to dict
-    
-    data = get_top_records(doservice_list)
-    print('dbdictionary :',doservice_list)
-    #data = get_top_records(doservice_list)
-    descriptions = generate_column_descriptions_for_tables(
-        data,
-        doservice_list['conn_str'],
-        doservice_list['db_type'],
-        doservice_list['db_schema_name']
-    )
-    return render_template(
-        'data_dictionary/wizard_data_new.html',
-        descriptions=descriptions,data=data,doservice_list=doservice_list
-    )
-
+    """Flask route for generating data dictionary"""
+    try:
+        # Extract and process request data
+        dict_tables_t = request.form.getlist('dict_tables')
+        
+        if not dict_tables_t:
+            return jsonify({'error': 'No tables selected'}), 400
+        
+        # Parse table list
+        try:
+            db_tables = eval(dict_tables_t[0])
+        except:
+            return jsonify({'error': 'Invalid table format'}), 400
+        
+        # Get form fields
+        conn_str = request.form.get('conn_str')
+        dq_tables = request.form.get('dq_tables')
+        db_schema_name = request.form.get('db_schema_name')
+        db_type = request.form.get('db_type')
+        conn_params = request.form.get('conn_params')
+        
+        # Construct service parameters
+        doservice_list = {
+            'dict_tables': db_tables,
+            'dq_tables': dq_tables,
+            'db_type': db_type,
+            'conn_str': conn_str,
+            'db_schema_name': db_schema_name,
+            'conn_params': conn_params
+        }
+        
+        # Get sample data
+        data = get_top_records(doservice_list)
+        
+        # Generate descriptions
+        descriptions = DataDictionaryGenerator.generate_column_descriptions_for_tables(
+            data_dict=data,
+            connection_string=doservice_list['conn_str'],
+            db_type=doservice_list['db_type'],
+            schema_name=doservice_list['db_schema_name']
+        )
+        
+        return render_template(
+            'data_dictionary/wizard_data_new.html',
+            descriptions=descriptions,
+            data=data,
+            doservice_list=doservice_list
+        )
+        
+    except Exception as e:
+        logging.error(f"Error in dbdictionary route: {e}")
+        return jsonify({'error': str(e)}), 500
 @data_dictionary_bp.route('/testapp')
 def testapp():
         

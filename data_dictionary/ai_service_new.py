@@ -1,5 +1,5 @@
 import mysql.connector
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple, Optional
 import pandas as pd
 import requests
 import hashlib
@@ -7,158 +7,286 @@ import pickle
 import os
 import re
 import logging
+import time
+import json
+import threading
 
-# Database configuration (replace with your actual credentials)
-db_config_local = {
-    'host': 'localhost',
-    'port': 3306,
-    'database': 'datagenie',
-    'user': 'datagenie',
-    'password': 'P@ss1234'
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('data_dictionary.log'),
+        logging.StreamHandler()
+    ]
+)
+
+# Configuration
+CACHE_DIR = 'ollama_cache'
+OLLAMA_CONFIG = {
+    'url': 'http://localhost:11434/api/generate',
+    'model': 'llama3',
+    'timeout': 120,
+    'max_workers': 2,
+    'batch_size': 3,
+    'retry_attempts': 3,
+    'retry_delay': 2
 }
 
-# Cache directory
-CACHE_DIR = 'ollama_cache'
-if not os.path.exists(CACHE_DIR):
-    os.makedirs(CACHE_DIR)
+# Ensure cache directory exists
+os.makedirs(CACHE_DIR, exist_ok=True)
 
-def local_db_connection(db_config):
-    """Establishes a connection to the local database using the provided config."""
-    try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-        cursor.execute("SELECT VERSION()")
-        db_version = cursor.fetchone()
-        version_local = db_version[0]
-        logging.info(f"Connected to MySQL version: {version_local}")
-        return conn, cursor
-    except mysql.connector.Error as err:
-        logging.error(f"Database connection error: {err}")
-        raise
+class DatabaseConnection:
+    """Database connection handler with connection pooling"""
+    
+    _connections = {}
+    _lock = threading.Lock()
+    
+    @classmethod
+    def get_connection(cls, db_config: Dict[str, Any]):
+        """Get or create a database connection"""
+        config_key = json.dumps(db_config, sort_keys=True)
+        
+        with cls._lock:
+            if config_key not in cls._connections:
+                try:
+                    conn = mysql.connector.connect(**db_config)
+                    cls._connections[config_key] = conn
+                    logging.info(f"Created new database connection for {db_config['host']}")
+                except mysql.connector.Error as err:
+                    logging.error(f"Database connection error: {err}")
+                    raise
+        
+        return cls._connections[config_key]
+    
+    @classmethod
+    def close_all(cls):
+        """Close all database connections"""
+        with cls._lock:
+            for config_key, conn in cls._connections.items():
+                try:
+                    conn.close()
+                except:
+                    pass
+            cls._connections.clear()
+            logging.info("All database connections closed")
 
-def get_cache_key(prompt: str) -> str:
-    return hashlib.md5(prompt.encode()).hexdigest()
-
-def load_from_cache(cache_key: str):
-    cache_file = os.path.join(CACHE_DIR, f'{cache_key}.pkl')
-    if os.path.exists(cache_file):
-        with open(cache_file, 'rb') as f:
-            return pickle.load(f)
-    return None
-
-def save_to_cache(cache_key: str, response: str):
-    cache_file = os.path.join(CACHE_DIR, f'{cache_key}.pkl')
-    with open(cache_file, 'wb') as f:
-        pickle.dump(response, f)
-
-def parse_markdown_description(description: str) -> dict:
-    patterns = {
-        'business_purpose': r'\*\*Business Purpose\*\*:\s*(.*?)(?=\n-|\n\n|$)',
-        'data_quality_rules': r'\*\*Data Quality Rules\*\*:\s*(.*?)(?=\n-|\n\n|$)',
-        'example_usage': r'\*\*Example Usage\*\*:\s*(.*?)(?=\n-|\n\n|$)',
-        'issues': r'\*\*Known Issues/Limitations\*\*:\s*(.*?)(?=\n-|\n\n|$)'
-    }
-    result = {}
-    for key, pattern in patterns.items():
-        match = re.search(pattern, description, re.DOTALL)
-        result[key] = match.group(1).strip() if match else ''
-    return result
-
-def generate_column_description(table_name: str, column_info: Dict[str, Any], sample_values: List[Any]) -> str:
-    logging.info(f"Retrieved cached description for generate_column_description")
-    prompt = f"""
-    As a data governance expert, provide a concise description for:
-
-    Table: {table_name}
-    Column: {column_info['COLUMN_NAME']}
-    Type: {column_info['DATA_TYPE']}
-    Nullable: {column_info['IS_NULLABLE']}
-    Max Length: {column_info.get('CHARACTER_MAXIMUM_LENGTH', 'N/A')}
-
-    Sample Values: {sample_values[:3]}
-
-    Include:
-    - **Business Purpose**: Describe the column's role in business processes (1 sentence).
-    - **Data Quality Rules**: List 1-2 rules to ensure data integrity (e.g., format, range, uniqueness).
-    - **Example Usage**: Provide 1 example of how the column is used in analysis or operations.
-    - **Known Issues/Limitations**: Identify 1-2 possible data quality issues.
-
-    Format as markdown bullets, keep total length under 200 words.
-    """
-
-    cache_key = get_cache_key(prompt)
-    cached = load_from_cache(cache_key)
-    if cached:
-        return cached
-
-    try:
-        response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "llama3",
-                "prompt": prompt,
-                "options": {"temperature": 0.2, "num_predict": 200},
-                "stream": False
-            },
-            timeout=60
-        )
-        logging.info(f"Retrieved cached description for generate")
-        if response.status_code != 200:
-            raise Exception(f"Ollama error: {response.status_code} {response.text}")
-
-        data = response.json()
-        description = data.get("response", "").strip()
-        save_to_cache(cache_key, description)
-        return description
-    except Exception as e:
-        return f"""
-- **Business Purpose**: Unable to determine purpose for {column_info['COLUMN_NAME']}.
-- **Data Quality Rules**: Ensure data matches type {column_info['DATA_TYPE']}; check for nulls if {column_info['IS_NULLABLE']}='NO'.
-- **Example Usage**: Analyze {column_info['COLUMN_NAME']} in {table_name} (e.g., count unique values).
-- **Known Issues/Limitations**: Description generation failed: {str(e)}; sample values: {sample_values[:3]}.
-"""
-
-def generate_column_descriptions_for_tables(data_dict: Dict[str, pd.DataFrame],
-                                           db_config: Dict[str, Any],
-                                           schema_name: str = None):
-    all_results = []
-
-    for table_name, df in data_dict.items():
-        if not isinstance(df, pd.DataFrame) or df.empty:
-            continue
-
-        # Build metadata DataFrame
-        metadata_df = pd.DataFrame({
-            'COLUMN_NAME': df.columns,
-            'DATA_TYPE': [str(df[col].dtype) for col in df.columns],
-            'IS_NULLABLE': ['YES' if df[col].isna().any() else 'NO' for col in df.columns],
-            'CHARACTER_MAXIMUM_LENGTH': [None] * len(df.columns)
-        })
-
-        for _, column_info in metadata_df.iterrows():
-            column_name = column_info['COLUMN_NAME']
-            if column_name not in df.columns:
-                continue
-
-            sample_values = df[column_name].dropna().head(3).tolist()
-            description = generate_column_description(table_name, column_info, sample_values)
-            parsed = parse_markdown_description(description)
-
-            all_results.append({
-                'table_name': table_name,
-                'column_name': column_name,
-                'business_purpose': parsed.get('business_purpose', ''),
-                'data_quality_rules': parsed.get('data_quality_rules', ''),
-                'example_usage': parsed.get('example_usage', ''),
-                'issues': parsed.get('issues', '')
-            })
-
-    # Insert into MySQL using mysql.connector
-    if all_results:
+class OllamaClient:
+    """Client for interacting with Ollama API with caching and retry logic"""
+    
+    @staticmethod
+    def get_cache_key(prompt: str) -> str:
+        """Generate a cache key from prompt"""
+        return hashlib.md5(prompt.encode()).hexdigest()
+    
+    @staticmethod
+    def load_from_cache(cache_key: str) -> Optional[str]:
+        """Load response from cache"""
+        cache_file = os.path.join(CACHE_DIR, f'{cache_key}.pkl')
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'rb') as f:
+                    return pickle.load(f)
+            except Exception as e:
+                logging.warning(f"Cache load failed: {e}")
+        return None
+    
+    @staticmethod
+    def save_to_cache(cache_key: str, response: str):
+        """Save response to cache"""
+        cache_file = os.path.join(CACHE_DIR, f'{cache_key}.pkl')
         try:
-            conn, cursor = local_db_connection(db_config)
+            with open(cache_file, 'wb') as f:
+                pickle.dump(response, f)
+        except Exception as e:
+            logging.warning(f"Cache save failed: {e}")
+    
+    @staticmethod
+    def parse_markdown_description(description: str) -> dict:
+        """Parse markdown formatted description into structured data"""
+        patterns = {
+            'business_purpose': r'\*\*Business Purpose\*\*:\s*(.*?)(?=\n-|\n\n|$)',
+            'data_quality_rules': r'\*\*Data Quality Rules\*\*:\s*(.*?)(?=\n-|\n\n|$)',
+            'example_usage': r'\*\*Example Usage\*\*:\s*(.*?)(?=\n-|\n\n|$)',
+            'issues': r'\*\*Known Issues/Limitations\*\*:\s*(.*?)(?=\n-|\n\n|$)'
+        }
+        
+        result = {}
+        for key, pattern in patterns.items():
+            match = re.search(pattern, description, re.DOTALL)
+            result[key] = match.group(1).strip() if match else ''
+        
+        return result
+    
+    @classmethod
+    def generate_descriptions_batch(cls, columns_data: List[Tuple[str, Dict[str, Any], List[Any]]]) -> Dict[str, str]:
+        """Generate descriptions for multiple columns in a single API call"""
+        if not columns_data:
+            return {}
+        
+        # Build batch prompt
+        prompt = "As a data governance expert, provide concise descriptions for the following columns:\n\n"
+        
+        for table_name, column_info, sample_values in columns_data:
+            prompt += f"""
+Table: {table_name}
+Column: {column_info['COLUMN_NAME']}
+Type: {column_info['DATA_TYPE']}
+Nullable: {column_info['IS_NULLABLE']}
+Max Length: {column_info.get('CHARACTER_MAXIMUM_LENGTH', 'N/A')}
+Sample Values: {sample_values[:5]}
+
+"""
+        
+        prompt += """
+For each column, include:
+- **Business Purpose**: Describe the column's role in business processes (1 sentence).
+- **Data Quality Rules**: List 1-2 rules to ensure data integrity (e.g., format, range, uniqueness).
+- **Example Usage**: Provide 1 example of how the column is used in analysis or operations.
+- **Known Issues/Limitations**: Identify 1-2 possible data quality issues.
+
+Format as markdown bullets, keep each description under 200 words.
+Clearly separate each column description with '---COLUMN---' marker.
+"""
+        
+        cache_key = cls.get_cache_key(prompt)
+        cached = cls.load_from_cache(cache_key)
+        if cached:
+            logging.info(f"Using cached response for {len(columns_data)} columns")
+            return cached
+        
+        # Generate with retry logic
+        for attempt in range(OLLAMA_CONFIG['retry_attempts']):
+            try:
+                response = requests.post(
+                    OLLAMA_CONFIG['url'],
+                    json={
+                        "model": OLLAMA_CONFIG['model'],
+                        "prompt": prompt,
+                        "options": {
+                            "temperature": 0.2, 
+                            "num_predict": 200 * len(columns_data),
+                            "top_p": 0.9
+                        },
+                        "stream": False
+                    },
+                    timeout=OLLAMA_CONFIG['timeout']
+                )
+                
+                if response.status_code != 200:
+                    raise Exception(f"Ollama error: {response.status_code} {response.text}")
+
+                data = response.json()
+                description = data.get("response", "").strip()
+                
+                # Parse the batch response
+                descriptions = description.split('---COLUMN---')
+                result = {}
+                for i, desc in enumerate(descriptions):
+                    if i < len(columns_data):
+                        table_name, column_info, _ = columns_data[i]
+                        column_name = column_info['COLUMN_NAME']
+                        result[f"{table_name}.{column_name}"] = desc.strip()
+                
+                # Save to cache
+                cls.save_to_cache(cache_key, result)
+                logging.info(f"Generated descriptions for {len(columns_data)} columns")
+                return result
+                
+            except Exception as e:
+                logging.warning(f"Attempt {attempt + 1} failed: {e}")
+                if attempt < OLLAMA_CONFIG['retry_attempts'] - 1:
+                    time.sleep(OLLAMA_CONFIG['retry_delay'] * (attempt + 1))
+                else:
+                    logging.error(f"All attempts failed for batch of {len(columns_data)} columns")
+                    # Fallback: generate individual error responses
+                    result = {}
+                    for table_name, column_info, sample_values in columns_data:
+                        column_name = column_info['COLUMN_NAME']
+                        result[f"{table_name}.{column_name}"] = f"""
+- **Business Purpose**: Unable to determine purpose for {column_name}.
+- **Data Quality Rules**: Ensure data matches type {column_info['DATA_TYPE']}; check for nulls if {column_info['IS_NULLABLE']}='NO'.
+- **Example Usage**: Analyze {column_name} in {table_name} (e.g., count unique values).
+- **Known Issues/Limitations**: Description generation failed after multiple attempts.
+"""
+                    return result
+
+class DataDictionaryGenerator:
+    """Main class for generating data dictionary descriptions"""
+    
+    @staticmethod
+    def parse_connection_string(conn_str: str) -> Dict[str, Any]:
+        """Parse SQLAlchemy-style connection string to mysql.connector config"""
+        # Default config
+        default_config = {
+            'host': 'localhost',
+            'port': 3306,
+            'database': 'datagenie',
+            'user': 'datagenie',
+            'password': 'P@ss1234',
+            'charset': 'utf8mb4',
+            'autocommit': True
+        }
+        
+        try:
+            if 'mysql+pymysql://' in conn_str:
+                # Extract the part after mysql+pymysql://
+                parts = conn_str.replace('mysql+pymysql://', '').split('@')
+                if len(parts) == 2:
+                    # User/password part
+                    user_pass = parts[0].split(':')
+                    user = user_pass[0]
+                    password = user_pass[1] if len(user_pass) > 1 else ''
+                    
+                    # Host/port/database part
+                    host_db = parts[1].split('/')
+                    host_port = host_db[0].split(':')
+                    host = host_port[0]
+                    port = int(host_port[1]) if len(host_port) > 1 else 3306
+                    database = host_db[1] if len(host_db) > 1 else 'datagenie'
+                    
+                    return {
+                        'host': host,
+                        'port': port,
+                        'database': database,
+                        'user': user,
+                        'password': password,
+                        'charset': 'utf8mb4',
+                        'autocommit': True
+                    }
+        except Exception as e:
+            logging.error(f"Error parsing connection string: {e}")
+        
+        return default_config
+    
+    @staticmethod
+    def prepare_column_data(data_dict: Dict[str, pd.DataFrame]) -> List[Tuple[str, Dict[str, Any], List[Any]]]:
+        """Prepare column data for processing"""
+        all_columns_data = []
+        
+        for table_name, df in data_dict.items():
+            if not isinstance(df, pd.DataFrame) or df.empty:
+                continue
             
-            # Create table if it doesn't exist
+            for column_name in df.columns:
+                sample_values = df[column_name].dropna().head(5).tolist()
+                column_info = {
+                    'COLUMN_NAME': column_name,
+                    'DATA_TYPE': str(df[column_name].dtype),
+                    'IS_NULLABLE': 'YES' if df[column_name].isna().any() else 'NO',
+                    'CHARACTER_MAXIMUM_LENGTH': None
+                }
+                all_columns_data.append((table_name, column_info, sample_values))
+        
+        return all_columns_data
+    
+    @staticmethod
+    def ensure_descriptions_table(db_config: Dict[str, Any]):
+        """Ensure the column_descriptions table exists"""
+        try:
+            conn = DatabaseConnection.get_connection(db_config)
+            cursor = conn.cursor()
+            
             create_table_query = """
             CREATE TABLE IF NOT EXISTS column_descriptions (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -168,40 +296,119 @@ def generate_column_descriptions_for_tables(data_dict: Dict[str, pd.DataFrame],
                 data_quality_rules TEXT,
                 example_usage TEXT,
                 issues TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY table_column_idx (table_name, column_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             cursor.execute(create_table_query)
+            cursor.close()
+            logging.info("Ensured column_descriptions table exists")
             
-            # Insert data
+        except Exception as e:
+            logging.error(f"Error ensuring table exists: {e}")
+            raise
+    
+    @staticmethod
+    def save_descriptions_to_db(descriptions: List[Dict[str, Any]], db_config: Dict[str, Any]):
+        """Save descriptions to database"""
+        if not descriptions:
+            return
+        
+        try:
+            conn = DatabaseConnection.get_connection(db_config)
+            cursor = conn.cursor()
+            
             insert_query = """
             INSERT INTO column_descriptions 
             (table_name, column_name, business_purpose, data_quality_rules, example_usage, issues)
             VALUES (%s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+            business_purpose = VALUES(business_purpose),
+            data_quality_rules = VALUES(data_quality_rules),
+            example_usage = VALUES(example_usage),
+            issues = VALUES(issues),
+            updated_at = CURRENT_TIMESTAMP
             """
             
-            for result in all_results:
-                cursor.execute(insert_query, (
-                    result['table_name'],
-                    result['column_name'],
-                    result['business_purpose'],
-                    result['data_quality_rules'],
-                    result['example_usage'],
-                    result['issues']
-                ))
-            
-            conn.commit()
-            logging.info(f"Successfully inserted {len(all_results)} records into column_descriptions table")
+            batch_size = 50
+            for i in range(0, len(descriptions), batch_size):
+                batch = descriptions[i:i + batch_size]
+                values = [
+                    (result['table_name'], result['column_name'], 
+                     result['business_purpose'], result['data_quality_rules'],
+                     result['example_usage'], result['issues'])
+                    for result in batch
+                ]
+                cursor.executemany(insert_query, values)
+                conn.commit()
+                logging.info(f"Saved {len(batch)} descriptions to database")
             
             cursor.close()
-            conn.close()
             
-        except mysql.connector.Error as err:
-            logging.error(f"Database error: {err}")
-            # You might want to handle this error differently, e.g., return the results without inserting
+        except Exception as e:
+            logging.error(f"Error saving to database: {e}")
             raise
+    
+    @classmethod
+    def generate_column_descriptions_for_tables(cls, data_dict: Dict[str, pd.DataFrame],
+                                               connection_string: str,
+                                               db_type: str,
+                                               schema_name: str = None) -> List[Dict[str, Any]]:
+        """
+        Main function to generate column descriptions
+        Maintains backward compatibility with original signature
+        """
+        # Parse connection string
+        db_config = cls.parse_connection_string(connection_string)
+        
+        # Prepare all column data
+        all_columns_data = cls.prepare_column_data(data_dict)
+        if not all_columns_data:
+            logging.warning("No column data to process")
+            return []
+        
+        # Ensure database table exists
+        cls.ensure_descriptions_table(db_config)
+        
+        results = []
+        total_columns = len(all_columns_data)
+        processed_columns = 0
+        
+        logging.info(f"Processing {total_columns} columns from {len(data_dict)} tables")
+        
+        # Process columns in batches
+        for i in range(0, total_columns, OLLAMA_CONFIG['batch_size']):
+            batch = all_columns_data[i:i + OLLAMA_CONFIG['batch_size']]
+            batch_descriptions = OllamaClient.generate_descriptions_batch(batch)
+            
+            for table_name, column_info, sample_values in batch:
+                column_key = f"{table_name}.{column_info['COLUMN_NAME']}"
+                description = batch_descriptions.get(column_key, "")
+                parsed = OllamaClient.parse_markdown_description(description)
+                
+                results.append({
+                    'table_name': table_name,
+                    'column_name': column_info['COLUMN_NAME'],
+                    'business_purpose': parsed.get('business_purpose', ''),
+                    'data_quality_rules': parsed.get('data_quality_rules', ''),
+                    'example_usage': parsed.get('example_usage', ''),
+                    'issues': parsed.get('issues', '')
+                })
+            
+            processed_columns += len(batch)
+            logging.info(f"Processed {processed_columns}/{total_columns} columns")
+            
+            # Add a small delay between batches
+            if i + OLLAMA_CONFIG['batch_size'] < total_columns:
+                time.sleep(1)
+        
+        # Save to database
+        cls.save_descriptions_to_db(results, db_config)
+        
+        logging.info(f"Completed processing {total_columns} columns")
+        return results
 
-    return all_results
-
-# Usage example:
-# results = generate_column_descriptions_for_tables(your_data_dict, db_config_local)
+# Cleanup on application exit
+import atexit
+atexit.register(DatabaseConnection.close_all)
