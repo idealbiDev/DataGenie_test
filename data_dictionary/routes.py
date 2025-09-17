@@ -268,19 +268,19 @@ def dbdictionary():
             db_type=doservice_list['db_type'],
             schema_name=doservice_list['db_schema_name']
         )
-        
+        logging.info(f"Generated  column descriptions : {descriptions}")
         logging.info(f"Generated {len(descriptions)} column descriptions")
         
-        return render_template(
-            'data_dictionary/wizard_data_new.html',
-            descriptions=descriptions,
-            data=data,
-            doservice_list=doservice_list
-        )
+        return jsonify(descriptions)
+        #return render_template('data_dictionary/wizard_data_new.html', descriptions=descriptions, data=data,
+         #   doservice_list=doservice_list
+       # )
         
     except Exception as e:
         logging.error(f"Error in dbdictionary route: {e}")
         return jsonify({'error': str(e)}), 500
+
+
 @data_dictionary_bp.route('/testapp')
 def testapp():
         

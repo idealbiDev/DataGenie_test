@@ -29,7 +29,7 @@
         
         <form id="connection-form" method="POST"  action="{{ url_for('data_dictionary.dbschema_select') }}">
             <input type="hidden" name="db_type" value="{{db_type }}">
-            <p>{{db_config }}</p>
+           
             <div class="connection-form">
                 {% for field in db_config.fields %}
                 <div class="form-group">
@@ -42,7 +42,8 @@
                               {% if field.required %}required{% endif %}
                               placeholder="{{ field.placeholder }}">{{ field.default or '' }}</textarea>
                               {% elif field.type == 'select' %}
-                               <select name="cars" id="cars">
+                               <select class="form-control" id="{{ field.name }}" name="{{ field.name }}">
+                                <option value="">--Select --</option>
                               {% for f in field.options %}
                              
                                <option value="{{f.value}}">{{f.label}}</option>
