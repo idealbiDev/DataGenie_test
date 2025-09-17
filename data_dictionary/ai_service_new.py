@@ -6,7 +6,7 @@ import hashlib
 import pickle
 import os
 import re
-
+import logging
 # MySQL connection string (adjust with your credentials)
 # Format: mysql+pymysql://user:password@host:port/database
 MYSQL_CONNECTION_STRING = "mysql+pymysql://datagenie:P@ss1234@localhost:3306/datagenie"
@@ -45,6 +45,7 @@ def parse_markdown_description(description: str) -> dict:
     return result
 
 def generate_column_description(table_name: str, column_info: Dict[str, Any], sample_values: List[Any]) -> str:
+    logging.info(f"Retrieved cached description for generate_column_description")
     prompt = f"""
     As a data governance expert, provide a concise description for:
 
@@ -81,6 +82,7 @@ def generate_column_description(table_name: str, column_info: Dict[str, Any], sa
             },
             timeout=60
         )
+        logging.info(f"Retrieved cached description for generate")
         if response.status_code != 200:
             raise Exception(f"Ollama error: {response.status_code} {response.text}")
 

@@ -1,8 +1,9 @@
 from flask import Blueprint
 
-data_mapping_bp = Blueprint('data_mapping', __name__,
+harmonizer_bp = Blueprint('harmonizer', __name__,
                           template_folder='templates',
                           static_folder='static',
-                          url_prefix='/data-mapping')
+                          url_prefix='/harmonizer')
 
-# Don't import anything else here to avoid circular imports
+# Import routes after creating the blueprint to avoid circular imports
+from . import harmonizer_routes

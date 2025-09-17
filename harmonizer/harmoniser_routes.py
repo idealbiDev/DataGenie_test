@@ -79,7 +79,7 @@ def get_columns(table_name):
                     'issues': desc.issues
                 }
             else:
-                from .ai_service import ai_service
+                from .ai_harmonizer_service import ai_service
                 # Generate new description using AI
                 ai_description = ai_service.generate_column_description(
                     table_name, col_meta, sample_values
@@ -122,7 +122,7 @@ def get_ai_suggestions():
             return jsonify({'error': 'Missing source_table or target_tables'}), 400
         
         from .models import ColumnDescription
-        from .ai_service import ai_service
+        from .ai_harmonizer_service import ai_service
         
         # Get all column descriptions
         all_columns = {}

@@ -6,13 +6,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class AIService:
+class AIHarmonizerService:
     def __init__(self):
         self.ollama_host = current_app.config.get('OLLAMA_HOST', 'http://localhost:11434')
         self.ollama_model = current_app.config.get('OLLAMA_MODEL', 'llama3')
         self.cohere_api_key = current_app.config.get('COHERE_API_KEY', os.getenv('COHERE_API_KEY'))
         self.cohere_model = current_app.config.get('COHERE_MODEL', 'command')
-        self.preferred_provider = current_app.config.get('AI_PREFERRED_PROVIDER', 'ollama')  # 'ollama' or 'cohere'
+        self.preferred_provider = current_app.config.get('AI_PREFERRED_PROVIDER', 'ollama')
     
     def generate_column_description(self, table_name, column_info, sample_values):
         """Generate column description using AI (Ollama first, Cohere as fallback)"""
@@ -301,4 +301,4 @@ class AIService:
         return suggestions
 
 # Global AI service instance
-ai_service = AIService()
+ai_harmonizer_service = AIHarmonizerService()
